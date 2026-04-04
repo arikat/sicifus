@@ -9,6 +9,7 @@ build/
 
 # Claude Code
 .claude/
+CLAUDE.md
 
 # Validation demo outputs
 validation_data/

@@ -2,7 +2,7 @@
   <h1>Sicifus</h1>
   
   <p>
-    <strong>Large-scale Structural Biology Analysis</strong>
+    <strong>High-Performance Structural Biology at Scale</strong>
   </p>
   <p>
     <a href="https://avenkat.github.io/sicifus"><strong>Documentation</strong></a> ·
@@ -21,16 +21,22 @@
 
 ---
 
-**Sicifus** is a high-performance Python library for ingesting, aligning, and analyzing thousands of macromolecular structures (CIF/PDB). By compiling structural data into a partitioned **Parquet** database, it enables out-of-core processing and rapid querying of datasets far larger than available RAM.
+**Sicifus** is a Python library for large-scale structural biology analysis. It ingests thousands of protein structures (CIF/PDB), stores them in a fast Parquet database, and enables comparative analysis, structural alignment, phylogenetics, and physics-based mutation analysis — all on datasets larger than RAM.
 
-## Features
+## Why Sicifus?
 
--   **Massive Ingestion**: Parse thousands of `.cif` or `.pdb` files into a structured, queryable database.
--   **Fast Alignment**: Sequence-independent structural alignment using a 3Di-inspired structural alphabet.
--   **Phylogenetics**: Generate RMSD-based phylogenetic trees and structural similarity networks.
--   **Ligand Analysis**: Analyze binding pockets, protein-ligand interactions, and atom-level contacts.
--   **Mutation & Stability**: In silico mutagenesis, ddG prediction, alanine scanning, and binding energy — powered by OpenMM.
--   **Metadata Integration**: Seamlessly join external metadata with structural data.
+**Problem:** Analyzing thousands of protein structures is slow and memory-intensive. Traditional tools load everything into RAM, limiting dataset size and slowing down queries.
+
+**Solution:** Sicifus compiles structures into a **partitioned Parquet database** with lazy evaluation via Polars. This enables:
+
+- **Out-of-core processing** — Analyze datasets larger than your RAM
+- **Fast queries** — Instant filtering, aggregation, and joins on structural data
+- **Structural alignment** — Sequence-independent alignment using 3Di structural alphabet
+- **Mutation analysis** — ddG prediction, alanine scanning, interface mutations (OpenMM)
+- **Phylogenetics** — RMSD-based trees and clustering
+- **Ligand analysis** — Binding pockets, protein-ligand interactions
+
+**Use cases:** Comparative structural biology, protein evolution studies, drug discovery, mutation effect prediction, structural genomics.
 
 ## Installation
 
