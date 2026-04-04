@@ -1,0 +1,67 @@
+site_name: Sicifus
+site_description: Massive-scale structural biology analysis with Polars and Gemmi.
+site_url: https://arikat.github.io/sicifus/
+repo_url: https://github.com/arikat/sicifus
+repo_name: arikat/sicifus
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: lime
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.expand
+    - navigation.sections
+    - navigation.top
+    - toc.integrate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quick Start: quickstart.md
+  - Tutorials:
+    - Ingestion: tutorials/ingestion.md
+    - Alignment: tutorials/alignment.md
+    - Phylogenetics & Clustering: tutorials/phylogenetics.md
+    - Ligand Analysis: tutorials/ligands.md
+    - Energy Scoring: tutorials/energy.md
+    - Mutation & Stability: tutorials/mutations.md
+    - Metadata: tutorials/metadata.md
+  - API Reference: api.md

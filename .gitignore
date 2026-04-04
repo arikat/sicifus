@@ -1,0 +1,38 @@
+__pycache__/
+*.pyc
+.DS_Store
+site/
+.ipynb_checkpoints/
+dist/
+build/
+*.egg-info/
+
+# Claude Code
+.claude/
+
+# Validation demo outputs
+validation_data/
+validation_plot.png
+error_distribution.png
+*_validation.png
+*_error_dist.png
+
+# Example outputs
+*_network.png
+*_clean.pdb
+*_raw.pdb
+*_repaired.pdb
+ddg_plot.png
+scan_heatmap.png
+alanine_scan.png
+terms.png
+dist.png
+interaction_network.png
+aromatic_network.png
+direct_network.png
+
+# Test outputs
+.pytest_cache/
+htmlcov/
+.coverage
+*.png.test
