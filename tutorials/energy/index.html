@@ -1,0 +1,1227 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Massive-scale structural biology analysis with Polars and Gemmi.">
+      
+      
+      
+        <link rel="canonical" href="https://arikat.github.io/sicifus/tutorials/energy/">
+      
+      
+        <link rel="prev" href="../ligands/">
+      
+      
+        <link rel="next" href="../mutations/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Energy Scoring - Sicifus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#energy-scoring-tutorial" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Sicifus" class="md-header__button md-logo" aria-label="Sicifus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sicifus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Energy Scoring
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/arikat/sicifus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    arikat/sicifus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Sicifus" class="md-nav__button md-logo" aria-label="Sicifus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Sicifus
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/arikat/sicifus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    arikat/sicifus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingestion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../phylogenetics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phylogenetics & Clustering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ligands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ligand Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Energy Scoring
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Energy Scoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#protonation-crucial-step" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protonation (Crucial Step)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Protonation (Crucial Step)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#best-practice-separate-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practice: Separate Databases
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scoring-a-single-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scoring a Single Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scoring a Single Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#output-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparing-binding-pockets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparing Binding Pockets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparing-conformers-relative-energy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparing Conformers (Relative Energy)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interpreting-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interpreting Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#interaction-energy-kcalmol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction Energy (kcal/mol)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interpreting-the-homo-lumo-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting the HOMO-LUMO Gap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#total-energy-hartree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Total Energy (Hartree)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debugging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debugging
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mutations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mutation & Stability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metadata/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadata
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="energy-scoring-tutorial">Energy Scoring Tutorial</h1>
+<p>Sicifus integrates with <strong>GFN2-xTB</strong> (via the <code>xtb</code> package) to perform semi-empirical quantum mechanical scoring of ligand binding poses. This goes beyond geometric analysis by calculating the actual electronic stability of a ligand within its protein pocket.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>You must have <code>xtb</code> installed and available in your system PATH. For robust protonation, <strong>OpenMM</strong>, <strong>PDBFixer</strong>, and <strong>Meeko</strong> are highly recommended.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>xtb<span class="w"> </span>openmm<span class="w"> </span>pdbfixer<span class="w"> </span>meeko
+</code></pre></div>
+<h2 id="protonation-crucial-step">Protonation (Crucial Step)</h2>
+<p>Semi-empirical methods like xTB require explicit hydrogens on all atoms. Standard PDB/CIF files often lack hydrogens or contain only polar hydrogens.</p>
+<p><strong>Recommendation:</strong> Add hydrogens during <strong>ingestion</strong>. This ensures all your structures are physically complete and consistent before you start any analysis.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Ingest with protonation enabled (uses PDBFixer + Meeko)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">db</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;./data/cif_files&quot;</span><span class="p">,</span> <span class="n">protonate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<p>Sicifus will:
+1.  Use <strong>PDBFixer</strong> to protonate the protein at pH 7.4.
+2.  Use <strong>Meeko</strong> (or RDKit) to protonate ligands.
+    *   <strong>Crucially</strong>, it strips any existing hydrogens from the input file first to ensure a complete and consistent protonation state (All Atom model), preventing issues with "missing non-polar hydrogens" common in crystal structures.</p>
+<p>If you skip this, Sicifus will attempt to add hydrogens on-the-fly using Meeko/RDKit/OpenBabel, but this is less robust for protein pockets than the ingestion-time PDBFixer method.</p>
+<h3 id="best-practice-separate-databases">Best Practice: Separate Databases</h3>
+<p>To avoid mixing original crystal coordinates (for geometric analysis) with fixed/protonated coordinates (for energy scoring), use separate database directories:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Raw data for geometry (RMSD, contacts)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">db_raw</span> <span class="o">=</span> <span class="n">Sicifus</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;./db_raw&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">db_raw</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;./data&quot;</span><span class="p">,</span> <span class="n">protonate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Protonated data for energy scoring</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">db_energy</span> <span class="o">=</span> <span class="n">Sicifus</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;./db_energy&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">db_energy</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;./data&quot;</span><span class="p">,</span> <span class="n">protonate</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="how-it-works">How It Works</h2>
+<ol>
+<li><strong>Extraction</strong>: Sicifus extracts the ligand and all protein atoms within a specified cutoff (e.g., 6 Å).</li>
+<li><strong>Protonation Check</strong>: If hydrogens are missing (and weren't added during ingestion), it attempts to add them on-the-fly.</li>
+<li><strong>Constraint Generation</strong>: A constraint file is created to "freeze" the protein atoms in place. This ensures the pocket shape is maintained while allowing the ligand to relax.</li>
+<li><strong>Optimization</strong>: <code>xtb</code> runs a geometry optimization on the ligand using the GFN2-xTB method.</li>
+<li><strong>Interaction Energy</strong>: Sicifus calculates the <strong>Interaction Energy</strong> ($E_{\text{int}}$) to allow comparison across different pockets:
+    $$E_{\text{int}} = E_{\text{complex}} - (E_{\text{protein}} + E_{\text{ligand}})$$<ul>
+<li>$E_{\text{complex}}$: Optimized energy of Pocket + Ligand.</li>
+<li>$E_{\text{protein}}$: Single-point energy of the Pocket alone.</li>
+<li>$E_{\text{ligand}}$: Single-point energy of the Ligand alone.</li>
+</ul>
+</li>
+</ol>
+<h2 id="scoring-a-single-structure">Scoring a Single Structure</h2>
+<p>Use <code>score_ligand_energy</code> to score a specific ligand in a specific structure.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">sicifus</span> <span class="kn">import</span> <span class="n">Sicifus</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">db</span> <span class="o">=</span> <span class="n">Sicifus</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;./my_db&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c1"># Score ligand &quot;GLC&quot; in structure &quot;1abc&quot;</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># Freezes protein atoms within 6.0 Å</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">score_ligand_energy</span><span class="p">(</span><span class="s2">&quot;GLC&quot;</span><span class="p">,</span> <span class="s2">&quot;1abc&quot;</span><span class="p">,</span> <span class="n">distance_cutoff</span><span class="o">=</span><span class="mf">6.0</span><span class="p">)</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1"># {</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="c1">#   &#39;interaction_energy&#39;: -25.4,   # kcal/mol — binding strength (key metric)</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="c1">#   &#39;energy&#39;: -123.45678,          # Total complex energy (Hartree)</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="c1">#   &#39;gap&#39;: 2.13,                   # HOMO-LUMO gap (eV)</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="c1">#   &#39;e_complex&#39;: -123.45678,       # E(protein + ligand) optimized (Hartree)</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="c1">#   &#39;e_protein&#39;: -100.12345,       # E(protein pocket) single-point (Hartree)</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="c1">#   &#39;e_ligand&#39;: -23.29388,         # E(ligand alone) single-point (Hartree)</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="c1"># }</span>
+</code></pre></div>
+<h3 id="output-fields">Output Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Unit</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>interaction_energy</code></td>
+<td>kcal/mol</td>
+<td>$E_{\text{complex}} - (E_{\text{protein}} + E_{\text{ligand}})$. <strong>Primary metric.</strong> More negative = stronger binding.</td>
+</tr>
+<tr>
+<td><code>gap</code></td>
+<td>eV</td>
+<td>HOMO-LUMO gap. Larger = more stable electronic state. See <a href="#interpreting-the-homo-lumo-gap">Interpreting the Gap</a>.</td>
+</tr>
+<tr>
+<td><code>energy</code></td>
+<td>Hartree</td>
+<td>Total optimized complex energy. Only meaningful for comparing identical systems.</td>
+</tr>
+<tr>
+<td><code>e_complex</code></td>
+<td>Hartree</td>
+<td>Same as <code>energy</code> — the optimized complex.</td>
+</tr>
+<tr>
+<td><code>e_protein</code></td>
+<td>Hartree</td>
+<td>Single-point energy of the frozen protein pocket.</td>
+</tr>
+<tr>
+<td><code>e_ligand</code></td>
+<td>Hartree</td>
+<td>Single-point energy of the isolated ligand.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="comparing-binding-pockets">Comparing Binding Pockets</h2>
+<p>The real power comes from comparing the <em>same ligand</em> across <em>different structures</em> (e.g., homologs or different conformations). Because we calculate interaction energy, we can compare pockets with different amino acid compositions.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span> <span class="nn">polars</span> <span class="k">as</span> <span class="nn">pl</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># 1. Get all structures containing the ligand</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">ligand</span> <span class="o">=</span> <span class="s2">&quot;LIG&quot;</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">structure_ids</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">ligands</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;residue_name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">ligand</span><span class="p">)</span>\
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>                          <span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="s2">&quot;structure_id&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span><span class="o">.</span><span class="n">to_series</span><span class="p">()</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scoring </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">structure_ids</span><span class="p">)</span><span class="si">}</span><span class="s2"> structures for </span><span class="si">{</span><span class="n">ligand</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="k">for</span> <span class="n">sid</span> <span class="ow">in</span> <span class="n">structure_ids</span><span class="p">:</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>    <span class="n">score</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">score_ligand_energy</span><span class="p">(</span><span class="n">ligand</span><span class="p">,</span> <span class="n">sid</span><span class="p">,</span> <span class="n">distance_cutoff</span><span class="o">=</span><span class="mf">6.0</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="k">if</span> <span class="s2">&quot;interaction_energy&quot;</span> <span class="ow">in</span> <span class="n">score</span><span class="p">:</span>
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>            <span class="s2">&quot;structure_id&quot;</span><span class="p">:</span> <span class="n">sid</span><span class="p">,</span>
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>            <span class="o">**</span><span class="n">score</span>  <span class="c1"># Capture all xTB output fields</span>
+<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>        <span class="p">})</span>
+<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>
+<a id="__codelineno-4-20" name="__codelineno-4-20" href="#__codelineno-4-20"></a><span class="c1"># 2. Convert to DataFrame and sort by strongest binding</span>
+<a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a><span class="n">df_scores</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s2">&quot;interaction_energy&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>
+<a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Top 5 strongest binding pockets:&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a><span class="nb">print</span><span class="p">(</span><span class="n">df_scores</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+<a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>
+<a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="c1"># 3. Filter out likely failed calculations (huge positive energy = diverged optimization)</span>
+<a id="__codelineno-4-27" name="__codelineno-4-27" href="#__codelineno-4-27"></a><span class="n">df_reliable</span> <span class="o">=</span> <span class="n">df_scores</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;interaction_energy&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span>
+<a id="__codelineno-4-28" name="__codelineno-4-28" href="#__codelineno-4-28"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Reliable results (</span><span class="si">{</span><span class="n">df_reliable</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">df_scores</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
+<a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="nb">print</span><span class="p">(</span><span class="n">df_reliable</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="comparing-conformers-relative-energy">Comparing Conformers (Relative Energy)</h2>
+<p>If you are comparing different conformers of the <strong>exact same system</strong> (e.g., docking poses of the same ligand in the same protein), you can use the <strong>Relative Energy</strong> (kcal/mol). This is derived from the total energy (Hartree).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Assume df_scores has an &quot;energy&quot; column (Hartree)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1"># Calculate relative energy (kcal/mol) relative to the global minimum</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">df_relative</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">calculate_relative_energy</span><span class="p">(</span><span class="n">df_scores</span><span class="p">)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">df_relative</span><span class="o">.</span><span class="n">select</span><span class="p">([</span><span class="s2">&quot;structure_id&quot;</span><span class="p">,</span> <span class="s2">&quot;energy&quot;</span><span class="p">,</span> <span class="s2">&quot;relative_energy_kcal&quot;</span><span class="p">]))</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># structure_id  | energy (Eh) | relative_energy_kcal</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># --------------------------------------------------</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="c1"># pose_1        | -123.456    | 0.00   (Best)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1"># pose_2        | -123.454    | 1.25   (+1.25 kcal/mol)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="c1"># pose_3        | -123.450    | 3.76   (+3.76 kcal/mol)</span>
+</code></pre></div>
+<p>If you have multiple ligands and want to find the best pose <em>per ligand</em>, use <code>group_by</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Calculate relative energy per ligand group</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">df_relative</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">calculate_relative_energy</span><span class="p">(</span><span class="n">df_scores</span><span class="p">,</span> <span class="n">group_by</span><span class="o">=</span><span class="s2">&quot;ligand_name&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="interpreting-results">Interpreting Results</h2>
+<h3 id="interaction-energy-kcalmol">Interaction Energy (kcal/mol)</h3>
+<p>This is the <strong>primary metric</strong> for binding affinity:</p>
+<table>
+<thead>
+<tr>
+<th>Range</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&lt; −10</td>
+<td>Strong binding (typical for drug-like molecules)</td>
+</tr>
+<tr>
+<td>−10 to −1</td>
+<td>Moderate binding</td>
+</tr>
+<tr>
+<td>−1 to 0</td>
+<td>Weak binding</td>
+</tr>
+<tr>
+<td>&gt; 0</td>
+<td>Unfavorable (repulsive) — ligand doesn't "want" to be there</td>
+</tr>
+<tr>
+<td>&gt; 100</td>
+<td>Almost certainly a failed calculation — check the gap and charge</td>
+</tr>
+</tbody>
+</table>
+<h3 id="interpreting-the-homo-lumo-gap">Interpreting the HOMO-LUMO Gap</h3>
+<p>The HOMO-LUMO gap relates to electronic stability, but its usefulness <strong>depends on system size</strong>.</p>
+<p><strong>For small molecules (&lt; 50 atoms):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Gap (eV)</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&gt; 1.0</td>
+<td>Healthy electronic structure</td>
+</tr>
+<tr>
+<td>0.1 – 1.0</td>
+<td>Borderline</td>
+</tr>
+<tr>
+<td>&lt; 0.1</td>
+<td>Likely problematic — check charge</td>
+</tr>
+</tbody>
+</table>
+<p><strong>For protein-ligand pockets (100–300+ atoms):</strong></p>
+<p>Gaps of <strong>0.01–0.05 eV are normal</strong> with GFN2-xTB. This is a known behavior of tight-binding methods on large systems — the density of electronic states increases with system size, making the frontier orbital gap systematically smaller. This does <strong>not</strong> mean the calculation failed.</p>
+<p>The interaction energy (a <em>difference</em> of energies) benefits from error cancellation and remains robust even when the absolute gap is tiny. You can verify this by noting that interaction energies are consistent regardless of charge assignment.</p>
+<p><strong>When to worry:</strong>
+- Gap is exactly 0.0 eV — SCF likely did not converge at all
+- Gap is tiny <strong>and</strong> interaction energy is hugely positive (&gt; 50 kcal/mol) — both indicate failure</p>
+<p><strong>Tip:</strong> For large systems, filter on interaction energy magnitude rather than gap:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Flag likely failed calculations by unreasonable interaction energy</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">df_reliable</span> <span class="o">=</span> <span class="n">df_scores</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;interaction_energy&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="total-energy-hartree">Total Energy (Hartree)</h3>
+<p>Useful <strong>only</strong> for comparing <em>identical</em> systems (e.g., conformers of the exact same protein-ligand complex). Do <strong>not</strong> use this to compare different pockets — use <code>interaction_energy</code> instead.</p>
+<h2 id="advanced-options">Advanced Options</h2>
+<p>You can customize the calculation parameters:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">db</span><span class="o">.</span><span class="n">score_ligand_energy</span><span class="p">(</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="s2">&quot;LIG&quot;</span><span class="p">,</span> <span class="s2">&quot;1abc&quot;</span><span class="p">,</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>    <span class="n">distance_cutoff</span><span class="o">=</span><span class="mf">8.0</span><span class="p">,</span>  <span class="c1"># Include more protein context</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>    <span class="n">charge</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>            <span class="c1"># Specify system charge if known</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">solvent</span><span class="o">=</span><span class="s2">&quot;water&quot;</span>       <span class="c1"># Use implicit solvation (ALPB)</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="p">)</span>
+</code></pre></div>
+<h2 id="debugging">Debugging</h2>
+<p>Use <code>debug=True</code> to save input/output structures for visual inspection:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">score</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">score_ligand_energy</span><span class="p">(</span><span class="s2">&quot;LIG&quot;</span><span class="p">,</span> <span class="s2">&quot;my_structure&quot;</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># Saves to xtb_work/debug_structures/:</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="c1">#   my_structure_input.xyz   — structure sent to xTB</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1">#   my_structure_input.pdb   — same, converted for viewers</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1">#   my_structure_optimized.xyz — xTB-optimized geometry</span>
+</code></pre></div>
+<p>Open these in PyMOL, ChimeraX, or similar to verify:
+- Hydrogens are present on both protein and ligand
+- No "protons in space" (isolated H atoms far from any heavy atom)
+- Complete residues (no fragmented amino acids)</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>xtb not found</code></td>
+<td>Binary not in PATH</td>
+<td><code>conda install -c conda-forge xtb</code></td>
+</tr>
+<tr>
+<td>All gaps &lt; 0.1 eV (large systems)</td>
+<td><strong>Normal</strong> for 100+ atom systems with GFN2-xTB</td>
+<td>Trust interaction energy instead; see <a href="#interpreting-the-homo-lumo-gap">gap section</a></td>
+</tr>
+<tr>
+<td>Gap = 0.0 eV exactly</td>
+<td>SCF did not converge</td>
+<td>Try different <code>charge=</code>; reduce <code>distance_cutoff</code></td>
+</tr>
+<tr>
+<td>Huge positive energies (&gt;50 kcal/mol)</td>
+<td>Failed optimization / bad geometry</td>
+<td>Check debug structures; try <code>protonate=True</code> during ingestion</td>
+</tr>
+<tr>
+<td>Ligand has 0 hydrogens</td>
+<td>Protonation failed</td>
+<td>Re-ingest with <code>protonate=True</code>; check <code>[Ligand H]</code> log messages</td>
+</tr>
+<tr>
+<td>xTB crashes with stack trace</td>
+<td>Fragmented residues or missing H</td>
+<td>Ensure protonation; Sicifus now extracts complete residues</td>
+</tr>
+<tr>
+<td>Very slow</td>
+<td>Large pocket</td>
+<td>Reduce <code>distance_cutoff</code> (e.g., 5.0 Å)</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "navigation.expand", "navigation.sections", "navigation.top", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,1610 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Massive-scale structural biology analysis with Polars and Gemmi.">
+      
+      
+      
+        <link rel="canonical" href="https://arikat.github.io/sicifus/tutorials/mutations/">
+      
+      
+        <link rel="prev" href="../energy/">
+      
+      
+        <link rel="next" href="../metadata/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Mutation & Stability - Sicifus</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mutation-stability-engine" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Sicifus" class="md-header__button md-logo" aria-label="Sicifus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Sicifus
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Mutation & Stability
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/arikat/sicifus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    arikat/sicifus
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Sicifus" class="md-nav__button md-logo" aria-label="Sicifus" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Sicifus
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/arikat/sicifus" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    arikat/sicifus
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingestion/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../phylogenetics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Phylogenetics & Clustering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ligands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ligand Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../energy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Energy Scoring
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mutation & Stability
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mutation & Stability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How It Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#standalone-vs-database-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standalone vs. Database Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#specifying-mutations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Specifying Mutations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#batch-mutations-from-csv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch Mutations from CSV
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Batch Mutations from CSV">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#csv-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CSV Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loading-and-running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Loading and Running
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimal-csv-no-chain-column" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Minimal CSV (no chain column)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repairing-a-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repairing a Structure
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Repairing a Structure">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#repairresult-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RepairResult fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#calculating-stability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calculating Stability
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Calculating Stability">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stabilityresult-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StabilityResult fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#energy-terms-explained" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Energy terms explained
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#single-mutations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single Mutations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Single Mutations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#reading-the-result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading the result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mutationresult-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MutationResult fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interpreting-ddg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interpreting ddG
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-minimisation-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multiple minimisation runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#binding-energy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Binding Energy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Binding Energy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bindingresult-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BindingResult fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alanine-scanning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alanine Scanning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#position-scan-pssm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Position Scan (PSSM)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-residue-energy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-Residue Energy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-via-the-sicifus-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using via the Sicifus Database
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metadata/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metadata
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="mutation-stability-engine">Mutation &amp; Stability Engine</h1>
+<p>Sicifus includes a physics-based mutation and stability engine powered by <strong>OpenMM</strong> and <strong>PDBFixer</strong>. It provides structure repair, in silico mutagenesis, stability scoring, binding energy calculation, and scanning — using open-source tools.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>The mutation engine requires <code>openmm</code> and <code>pdbfixer</code>, which are already part of the <code>[energy]</code> optional dependency group:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;sicifus[energy]&quot;</span>
+</code></pre></div>
+<p>Or via conda (recommended):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>conda<span class="w"> </span>install<span class="w"> </span>-c<span class="w"> </span>conda-forge<span class="w"> </span>openmm<span class="w"> </span>pdbfixer
+</code></pre></div>
+<h2 id="how-it-works">How It Works</h2>
+<p>Under the hood, the engine uses:</p>
+<ul>
+<li><strong>PDBFixer</strong> to repair structures (missing atoms, residues, hydrogens) and apply mutations (residue swaps + sidechain rebuild).</li>
+<li><strong>OpenMM</strong> with the <strong>AMBER ff14SB</strong> force field and <strong>GBn2 implicit solvent</strong> to minimise structures and calculate potential energies.</li>
+<li><strong>Harmonic backbone restraints</strong> during mutation minimisation, allowing sidechain flexibility while keeping the backbone fixed.</li>
+<li><strong>Force group decomposition</strong> to report energy by term (bonds, angles, torsions, nonbonded, solvation).</li>
+</ul>
+<p>All energies are reported in <strong>kcal/mol</strong>.</p>
+<h2 id="standalone-vs-database-usage">Standalone vs. Database Usage</h2>
+<p>The <code>MutationEngine</code> can be used in two ways:</p>
+<p><strong>1. Through the Sicifus database</strong> — operates on structures already ingested into your Parquet database:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">sicifus</span> <span class="kn">import</span> <span class="n">Sicifus</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">db</span> <span class="o">=</span> <span class="n">Sicifus</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;./my_db&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">db</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">calculate_stability</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>2. Standalone</strong> — accepts any PDB file path, PDB string, or Polars DataFrame directly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">sicifus</span> <span class="kn">import</span> <span class="n">MutationEngine</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">MutationEngine</span><span class="p">()</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">calculate_stability</span><span class="p">(</span><span class="s2">&quot;1crn.pdb&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># or</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">calculate_stability</span><span class="p">(</span><span class="n">pdb_string</span><span class="p">)</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="c1"># or</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">calculate_stability</span><span class="p">(</span><span class="n">atoms_dataframe</span><span class="p">)</span>
+</code></pre></div>
+<p>The rest of this tutorial uses the standalone <code>MutationEngine</code> for clarity. Every method shown here has a corresponding wrapper on the <code>Sicifus</code> class that takes a <code>structure_id</code> instead.</p>
+<hr />
+<h2 id="specifying-mutations">Specifying Mutations</h2>
+<p>Mutations use a simple <strong>WtPositionMut</strong> format — just the wild-type residue, position number, and mutant residue:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>G13L     → Gly at position 13 → Leu
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>F42W     → Phe at position 42 → Trp
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>A100V    → Ala at position 100 → Val
+</code></pre></div>
+<p>Chain defaults to <code>"A"</code> unless specified separately. You can specify mutations as strings or as <code>Mutation</code> objects:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span> <span class="nn">sicifus</span> <span class="kn">import</span> <span class="n">Mutation</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># From a string (chain defaults to A)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">m</span> <span class="o">=</span> <span class="n">Mutation</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s2">&quot;G13L&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># From a string with explicit chain</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">m</span> <span class="o">=</span> <span class="n">Mutation</span><span class="o">.</span><span class="n">from_str</span><span class="p">(</span><span class="s2">&quot;G13L&quot;</span><span class="p">,</span> <span class="n">chain</span><span class="o">=</span><span class="s2">&quot;B&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="c1"># Direct construction (1-letter or 3-letter codes)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="n">m</span> <span class="o">=</span> <span class="n">Mutation</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span> <span class="n">wt_residue</span><span class="o">=</span><span class="s2">&quot;G&quot;</span><span class="p">,</span> <span class="n">mut_residue</span><span class="o">=</span><span class="s2">&quot;L&quot;</span><span class="p">)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="n">m</span> <span class="o">=</span> <span class="n">Mutation</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span> <span class="n">wt_residue</span><span class="o">=</span><span class="s2">&quot;GLY&quot;</span><span class="p">,</span> <span class="n">mut_residue</span><span class="o">=</span><span class="s2">&quot;LEU&quot;</span><span class="p">,</span> <span class="n">chain</span><span class="o">=</span><span class="s2">&quot;B&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="batch-mutations-from-csv">Batch Mutations from CSV</h2>
+<p>For real workflows you typically have a list of mutations — from experimental data, literature, or a design tool. Sicifus ingests these from a CSV file.</p>
+<h3 id="csv-format">CSV Format</h3>
+<p>The CSV must have a <strong><code>mutation</code></strong> column. An optional <strong><code>chain</code></strong> column provides chain IDs (defaults to <code>"A"</code> if absent). Any additional columns are preserved as metadata and carried through to results.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mutation,chain,source,score
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>G13L,A,experiment,1.5
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>F42W,A,design,-0.3
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>T7V,B,literature,0.8
+</code></pre></div>
+<h3 id="loading-and-running">Loading and Running</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span> <span class="nn">sicifus</span> <span class="kn">import</span> <span class="n">MutationEngine</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">MutationEngine</span><span class="p">()</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1"># Load the CSV</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">mutations_df</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">load_mutations</span><span class="p">(</span><span class="s2">&quot;my_mutations.csv&quot;</span><span class="p">)</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">mutations_df</span><span class="p">)</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1"># shape: (3, 4)</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1"># ┌──────────┬───────┬────────────┬───────┐</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># │ mutation ┆ chain ┆ source     ┆ score │</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="c1"># ╞══════════╪═══════╪════════════╪═══════╡</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="c1"># │ G13L     ┆ A     ┆ experiment ┆ 1.5   │</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="c1"># │ F42W     ┆ A     ┆ design     ┆ -0.3  │</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="c1"># │ T7V      ┆ B     ┆ literature ┆ 0.8   │</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="c1"># └──────────┴───────┴────────────┴───────┘</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>
+<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a><span class="c1"># Run all mutations against a structure</span>
+<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="n">results</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">mutate_batch</span><span class="p">(</span><span class="s2">&quot;my_protein.pdb&quot;</span><span class="p">,</span> <span class="n">mutations_df</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a><span class="nb">print</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a><span class="c1"># shape: (3, 7)</span>
+<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a><span class="c1"># ┌──────────┬───────┬────────────┬───────┬───────────┬───────────────┬──────────────┐</span>
+<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a><span class="c1"># │ mutation ┆ chain ┆ source     ┆ score ┆ wt_energy ┆ mutant_energy ┆ ddg_kcal_mol │</span>
+<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a><span class="c1"># ╞══════════╪═══════╪════════════╪═══════╪═══════════╪═══════════════╪══════════════╡</span>
+<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a><span class="c1"># │ G13L     ┆ A     ┆ experiment ┆ 1.5   ┆ -1842.3   ┆ -1838.1       ┆ 4.2          │</span>
+<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a><span class="c1"># │ F42W     ┆ A     ┆ design     ┆ -0.3  ┆ -1842.3   ┆ -1843.1       ┆ -0.8         │</span>
+<a id="__codelineno-7-26" name="__codelineno-7-26" href="#__codelineno-7-26"></a><span class="c1"># │ T7V      ┆ B     ┆ literature ┆ 0.8   ┆ -1842.3   ┆ -1840.5       ┆ 1.8          │</span>
+<a id="__codelineno-7-27" name="__codelineno-7-27" href="#__codelineno-7-27"></a><span class="c1"># └──────────┴───────┴────────────┴───────┴───────────┴───────────────┴──────────────┘</span>
+</code></pre></div>
+<p>The same workflow works through the Sicifus database:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span> <span class="nn">sicifus</span> <span class="kn">import</span> <span class="n">Sicifus</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">db</span> <span class="o">=</span> <span class="n">Sicifus</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;./my_db&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">db</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">mutations_df</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">load_mutations</span><span class="p">(</span><span class="s2">&quot;my_mutations.csv&quot;</span><span class="p">)</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">mutate_batch</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">,</span> <span class="n">mutations_df</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="minimal-csv-no-chain-column">Minimal CSV (no chain column)</h3>
+<p>If all mutations are on chain A, you can omit the chain column entirely:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>mutation
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>G13L
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>F42W
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>T7V
+</code></pre></div>
+<hr />
+<h2 id="repairing-a-structure">Repairing a Structure</h2>
+<p><code>repair()</code> finds and adds missing atoms/residues, protonates at pH 7.0, and energy-minimises the structure.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">MutationEngine</span><span class="p">()</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">repair</span><span class="p">(</span><span class="s2">&quot;my_protein.pdb&quot;</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Energy before: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">energy_before</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kcal/mol&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Energy after:  </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">energy_after</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kcal/mol&quot;</span><span class="p">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># The repaired PDB is available as a string</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;repaired.pdb&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">pdb_string</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="repairresult-fields">RepairResult fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>energy_before</code></td>
+<td>float</td>
+<td>Energy before minimisation (kcal/mol)</td>
+</tr>
+<tr>
+<td><code>energy_after</code></td>
+<td>float</td>
+<td>Energy after minimisation (kcal/mol)</td>
+</tr>
+<tr>
+<td><code>pdb_string</code></td>
+<td>str</td>
+<td>Repaired + minimised PDB as a string</td>
+</tr>
+<tr>
+<td><code>topology</code></td>
+<td>object</td>
+<td>OpenMM Topology (for advanced use)</td>
+</tr>
+<tr>
+<td><code>positions</code></td>
+<td>object</td>
+<td>OpenMM Positions (for advanced use)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="calculating-stability">Calculating Stability</h2>
+<p><code>calculate_stability()</code> minimises the structure and decomposes the total potential energy into individual force-field terms.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">calculate_stability</span><span class="p">(</span><span class="s2">&quot;my_protein.pdb&quot;</span><span class="p">,</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total energy: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">total_energy</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kcal/mol&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="nb">print</span><span class="p">()</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="k">for</span> <span class="n">term</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">energy_terms</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">term</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Example output:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>Total energy: -1842.3 kcal/mol
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>  HarmonicBondForce: 142.8
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>  HarmonicAngleForce: 387.2
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>  PeriodicTorsionForce: 512.1
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>  NonbondedForce: -1654.3
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>  CustomGBForce: -1230.1
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>  total: -1842.3
+</code></pre></div>
+<h3 id="stabilityresult-fields">StabilityResult fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>total_energy</code></td>
+<td>float</td>
+<td>Total potential energy (kcal/mol)</td>
+</tr>
+<tr>
+<td><code>energy_terms</code></td>
+<td>dict</td>
+<td>Per-force-term breakdown (kcal/mol)</td>
+</tr>
+<tr>
+<td><code>pdb_string</code></td>
+<td>str</td>
+<td>Minimised PDB string</td>
+</tr>
+</tbody>
+</table>
+<h3 id="energy-terms-explained">Energy terms explained</h3>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>What it captures</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HarmonicBondForce</code></td>
+<td>Covalent bond stretching</td>
+</tr>
+<tr>
+<td><code>HarmonicAngleForce</code></td>
+<td>Bond angle bending</td>
+</tr>
+<tr>
+<td><code>PeriodicTorsionForce</code></td>
+<td>Dihedral/torsion angles</td>
+</tr>
+<tr>
+<td><code>NonbondedForce</code></td>
+<td>Van der Waals + electrostatics (combined)</td>
+</tr>
+<tr>
+<td><code>CustomGBForce</code></td>
+<td>Generalised Born implicit solvation (polar)</td>
+</tr>
+<tr>
+<td><code>total</code></td>
+<td>Sum of all terms</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The individual terms sum to the <code>total</code>. You can verify this:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">terms_sum</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">energy_terms</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;total&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">terms_sum</span> <span class="o">-</span> <span class="n">result</span><span class="o">.</span><span class="n">total_energy</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.0</span>
+</code></pre></div></p>
+</div>
+<hr />
+<h2 id="single-mutations">Single Mutations</h2>
+<p><code>mutate()</code> applies one or more point mutations, rebuilds the sidechain, minimises the mutant, and reports the change in stability (ddG).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="c1"># Using a string</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="s2">&quot;my_protein.pdb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;F13A&quot;</span><span class="p">])</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="c1"># Using a Mutation object</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="n">mut</span> <span class="o">=</span> <span class="n">Mutation</span><span class="p">(</span><span class="n">position</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span> <span class="n">wt_residue</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">,</span> <span class="n">mut_residue</span><span class="o">=</span><span class="s2">&quot;A&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="s2">&quot;my_protein.pdb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">mut</span><span class="p">])</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="c1"># With explicit chain</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="s2">&quot;my_protein.pdb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;F13A&quot;</span><span class="p">],</span> <span class="n">chain</span><span class="o">=</span><span class="s2">&quot;B&quot;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="reading-the-result">Reading the result</h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="s2">&quot;my_protein.pdb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;F13A&quot;</span><span class="p">],</span> <span class="n">max_iterations</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="c1"># ddG: positive = destabilising, negative = stabilising</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">ddg</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">ddg</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">: ddG = </span><span class="si">{</span><span class="n">ddg</span><span class="si">:</span><span class="s2">+.2f</span><span class="si">}</span><span class="s2"> kcal/mol&quot;</span><span class="p">)</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="c1"># Full energy breakdown as a Polars DataFrame</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">energy_terms</span><span class="p">)</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a><span class="c1"># shape: (6, 4)</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a><span class="c1"># ┌─────────────────────┬───────────┬───────────────┬────────┐</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a><span class="c1"># │ term                ┆ wt_energy ┆ mutant_energy ┆ delta  │</span>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="c1"># ╞═════════════════════╪═══════════╪═══════════════╪════════╡</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a><span class="c1"># │ HarmonicBondForce   ┆ 142.8     ┆ 138.2         ┆ -4.6   │</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a><span class="c1"># │ NonbondedForce      ┆ -1654.3   ┆ -1640.1       ┆ 14.2   │</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a><span class="c1"># │ ...                 ┆ ...       ┆ ...           ┆ ...    │</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a><span class="c1"># └─────────────────────┴───────────┴───────────────┴────────┘</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a><span class="c1"># The mutant PDB string</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a><span class="n">mutant_pdb</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">mutant_pdbs</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+</code></pre></div>
+<h3 id="mutationresult-fields">MutationResult fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wt_energy</code></td>
+<td>float</td>
+<td>Wild-type energy (kcal/mol)</td>
+</tr>
+<tr>
+<td><code>mutant_energies</code></td>
+<td>dict</td>
+<td>Mutant energy keyed by mutation label</td>
+</tr>
+<tr>
+<td><code>ddg</code></td>
+<td>dict</td>
+<td>ddG = mutant − wild-type (kcal/mol)</td>
+</tr>
+<tr>
+<td><code>mutant_pdbs</code></td>
+<td>dict</td>
+<td>Mutant PDB strings keyed by mutation label</td>
+</tr>
+<tr>
+<td><code>energy_terms</code></td>
+<td>DataFrame</td>
+<td>Per-term wt vs mutant comparison</td>
+</tr>
+</tbody>
+</table>
+<h3 id="interpreting-ddg">Interpreting ddG</h3>
+<table>
+<thead>
+<tr>
+<th>ddG (kcal/mol)</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&gt; +2</td>
+<td>Destabilising mutation</td>
+</tr>
+<tr>
+<td>+0.5 to +2</td>
+<td>Mildly destabilising</td>
+</tr>
+<tr>
+<td>−0.5 to +0.5</td>
+<td>Neutral</td>
+</tr>
+<tr>
+<td>&lt; −0.5</td>
+<td>Stabilising mutation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="multiple-minimisation-runs">Multiple minimisation runs</h3>
+<p>Since minimisation can get trapped in local minima, you can run multiple independent minimisations and keep the best energy:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">mutate</span><span class="p">(</span><span class="s2">&quot;protein.pdb&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;F13A&quot;</span><span class="p">],</span> <span class="n">n_runs</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="binding-energy">Binding Energy</h2>
+<p><code>calculate_binding_energy()</code> calculates the binding energy between two groups of chains using a thermodynamic cycle:</p>
+<p>$$E_{\text{binding}} = E_{\text{complex}} - (E_{\text{chains_A}} + E_{\text{chains_B}})$$</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">result</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">calculate_binding_energy</span><span class="p">(</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    <span class="s2">&quot;complex.pdb&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="n">chains_a</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span>      <span class="c1"># receptor</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>    <span class="n">chains_b</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">],</span>      <span class="c1"># ligand chain</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>    <span class="n">max_iterations</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="p">)</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Binding energy: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">binding_energy</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> kcal/mol&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Interface residues: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">interface_residues</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">interface_residues</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="bindingresult-fields">BindingResult fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>binding_energy</code></td>
+<td>float</td>
+<td>E_complex − (E_A + E_B) in kcal/mol</td>
+</tr>
+<tr>
+<td><code>complex_energy</code></td>
+<td>float</td>
+<td>Energy of the full complex</td>
+</tr>
+<tr>
+<td><code>chain_a_energy</code></td>
+<td>float</td>
+<td>Energy of chain group A in isolation</td>
+</tr>
+<tr>
+<td><code>chain_b_energy</code></td>
+<td>float</td>
+<td>Energy of chain group B in isolation</td>
+</tr>
+<tr>
+<td><code>interface_residues</code></td>
+<td>DataFrame</td>
+<td>Residues at the interface (within 5 Å)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="alanine-scanning">Alanine Scanning</h2>
+<p><code>alanine_scan()</code> systematically mutates each position to alanine to identify energetic hotspot residues.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># Scan specific positions</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="n">df</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">alanine_scan</span><span class="p">(</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>    <span class="s2">&quot;protein.pdb&quot;</span><span class="p">,</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>    <span class="n">chain</span><span class="o">=</span><span class="s2">&quot;A&quot;</span><span class="p">,</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>    <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">42</span><span class="p">],</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    <span class="n">max_iterations</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="p">)</span>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a><span class="c1"># shape: (4, 4)</span>
+<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a><span class="c1"># ┌───────┬──────────┬────────────┬──────────────┐</span>
+<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a><span class="c1"># │ chain ┆ position ┆ wt_residue ┆ ddg_kcal_mol │</span>
+<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a><span class="c1"># ╞═══════╪══════════╪════════════╪══════════════╡</span>
+<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a><span class="c1"># │ A     ┆ 7        ┆ ILE        ┆ 3.21         │</span>
+<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a><span class="c1"># │ A     ┆ 13       ┆ PHE        ┆ 8.45         │  ← hotspot</span>
+<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a><span class="c1"># │ A     ┆ 25       ┆ SER        ┆ 0.12         │</span>
+<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a><span class="c1"># │ A     ┆ 42       ┆ LEU        ┆ 2.87         │</span>
+<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a><span class="c1"># └───────┴──────────┴────────────┴──────────────┘</span>
+<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>
+<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a><span class="c1"># Scan all eligible residues (skips Ala and Gly automatically)</span>
+<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a><span class="n">df</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">alanine_scan</span><span class="p">(</span><span class="s2">&quot;protein.pdb&quot;</span><span class="p">,</span> <span class="n">chain</span><span class="o">=</span><span class="s2">&quot;A&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Large positive ddG values indicate hotspot residues whose sidechains are critical for stability.</p>
+<hr />
+<h2 id="position-scan-pssm">Position Scan (PSSM)</h2>
+<p><code>position_scan()</code> tests all 20 amino acids at specified positions, producing a position-specific scoring matrix.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">df</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">position_scan</span><span class="p">(</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    <span class="s2">&quot;protein.pdb&quot;</span><span class="p">,</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    <span class="n">chain</span><span class="o">=</span><span class="s2">&quot;A&quot;</span><span class="p">,</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>    <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="mi">13</span><span class="p">],</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="n">max_iterations</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="p">)</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="c1"># shape: (20, 5)</span>
+<a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a><span class="c1"># ┌───────┬──────────┬────────────┬─────────────┬──────────────┐</span>
+<a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a><span class="c1"># │ chain ┆ position ┆ wt_residue ┆ mut_residue ┆ ddg_kcal_mol │</span>
+<a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a><span class="c1"># ╞═══════╪══════════╪════════════╪═════════════╪══════════════╡</span>
+<a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a><span class="c1"># │ A     ┆ 13       ┆ PHE        ┆ ALA         ┆ 8.45         │</span>
+<a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a><span class="c1"># │ A     ┆ 13       ┆ PHE        ┆ ARG         ┆ 5.12         │</span>
+<a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a><span class="c1"># │ A     ┆ 13       ┆ PHE        ┆ ...         ┆ ...          │</span>
+<a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a><span class="c1"># │ A     ┆ 13       ┆ PHE        ┆ PHE         ┆ 0.00         │  ← self</span>
+<a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a><span class="c1"># │ A     ┆ 13       ┆ PHE        ┆ TRP         ┆ -0.32        │</span>
+<a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a><span class="c1"># │ ...   ┆ ...      ┆ ...        ┆ ...         ┆ ...          │</span>
+<a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a><span class="c1"># └───────┴──────────┴────────────┴─────────────┴──────────────┘</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Position scan is computationally expensive — it runs 19 mutations per position. Plan accordingly.</p>
+</div>
+<hr />
+<h2 id="per-residue-energy">Per-Residue Energy</h2>
+<p><code>per_residue_energy()</code> approximates each residue's energetic contribution using an alanine-subtraction method.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">df</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">per_residue_energy</span><span class="p">(</span><span class="s2">&quot;protein.pdb&quot;</span><span class="p">)</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="c1"># shape: (46, 4)</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="c1"># ┌───────┬────────────────┬──────────────┬─────────────────────────────────┐</span>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="c1"># │ chain ┆ residue_number ┆ residue_name ┆ energy_contribution_kcal_mol    │</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="c1"># ╞═══════╪════════════════╪══════════════╪═════════════════════════════════╡</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="c1"># │ A     ┆ 1              ┆ THR          ┆ -0.84                           │</span>
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="c1"># │ A     ┆ 2              ┆ THR          ┆ -1.23                           │</span>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="c1"># │ ...   ┆ ...            ┆ ...          ┆ ...                             │</span>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a><span class="c1"># └───────┴────────────────┴──────────────┴─────────────────────────────────┘</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This method runs one mutation per residue, so it is very slow on large proteins.</p>
+</div>
+<hr />
+<h2 id="using-via-the-sicifus-database">Using via the Sicifus Database</h2>
+<p>All methods above have wrappers on the <code>Sicifus</code> class that accept a <code>structure_id</code> instead of a PDB path:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="kn">from</span> <span class="nn">sicifus</span> <span class="kn">import</span> <span class="n">Sicifus</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="n">db</span> <span class="o">=</span> <span class="n">Sicifus</span><span class="p">(</span><span class="n">db_path</span><span class="o">=</span><span class="s2">&quot;./my_db&quot;</span><span class="p">)</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="n">db</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+<a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>
+<a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="c1"># Repair</span>
+<a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">repair_structure</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">)</span>
+<a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>
+<a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a><span class="c1"># Stability</span>
+<a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a><span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">calculate_stability</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">)</span>
+<a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>
+<a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a><span class="c1"># Single mutation</span>
+<a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a><span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">mutate_structure</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;F13A&quot;</span><span class="p">])</span>
+<a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>
+<a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a><span class="c1"># Batch mutations from CSV</span>
+<a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a><span class="n">mutations_df</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">load_mutations</span><span class="p">(</span><span class="s2">&quot;mutations.csv&quot;</span><span class="p">)</span>
+<a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a><span class="n">results</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">mutate_batch</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">,</span> <span class="n">mutations_df</span><span class="p">)</span>
+<a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>
+<a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a><span class="c1"># Binding energy</span>
+<a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a><span class="n">result</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">calculate_binding_energy</span><span class="p">(</span><span class="s2">&quot;my_complex&quot;</span><span class="p">,</span> <span class="n">chains_a</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">],</span> <span class="n">chains_b</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">])</span>
+<a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a>
+<a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a><span class="c1"># Alanine scan</span>
+<a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a><span class="n">df</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">alanine_scan</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">,</span> <span class="n">chain</span><span class="o">=</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">13</span><span class="p">])</span>
+<a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a>
+<a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a><span class="c1"># Position scan</span>
+<a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a><span class="n">df</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">position_scan</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">,</span> <span class="n">chain</span><span class="o">=</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="mi">13</span><span class="p">])</span>
+<a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a>
+<a id="__codelineno-21-28" name="__codelineno-21-28" href="#__codelineno-21-28"></a><span class="c1"># Per-residue energy</span>
+<a id="__codelineno-21-29" name="__codelineno-21-29" href="#__codelineno-21-29"></a><span class="n">df</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">per_residue_energy</span><span class="p">(</span><span class="s2">&quot;1crn&quot;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="configuration">Configuration</h2>
+<p>The <code>MutationEngine</code> can be customised at construction:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">engine</span> <span class="o">=</span> <span class="n">MutationEngine</span><span class="p">(</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>    <span class="n">forcefield</span><span class="o">=</span><span class="s2">&quot;amber14-all.xml&quot;</span><span class="p">,</span>   <span class="c1"># OpenMM force field XML</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>    <span class="n">water_model</span><span class="o">=</span><span class="s2">&quot;implicit&quot;</span><span class="p">,</span>         <span class="c1"># &quot;implicit&quot; for GBn2 (fast, default)</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>    <span class="n">platform</span><span class="o">=</span><span class="s2">&quot;CPU&quot;</span><span class="p">,</span>                 <span class="c1"># &quot;CPU&quot;, &quot;CUDA&quot;, or &quot;OpenCL&quot;</span>
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>    <span class="n">work_dir</span><span class="o">=</span><span class="s2">&quot;./mutate_work&quot;</span><span class="p">,</span>       <span class="c1"># Directory for temporary files</span>
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="p">)</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>forcefield</code></td>
+<td><code>"amber14-all.xml"</code></td>
+<td>AMBER ff14SB protein force field</td>
+</tr>
+<tr>
+<td><code>water_model</code></td>
+<td><code>"implicit"</code></td>
+<td><code>"implicit"</code> uses GBn2 implicit solvent (fast). Pass an explicit water XML like <code>"amber14/tip3pfb.xml"</code> for explicit solvent.</td>
+</tr>
+<tr>
+<td><code>platform</code></td>
+<td><code>"CPU"</code></td>
+<td>OpenMM compute platform. Use <code>"CUDA"</code> for GPU acceleration.</td>
+</tr>
+<tr>
+<td><code>work_dir</code></td>
+<td><code>"./mutate_work"</code></td>
+<td>Directory for temporary files</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.code.copy", "navigation.expand", "navigation.sections", "navigation.top", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
