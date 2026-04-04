@@ -5,7 +5,7 @@
     <strong>High-Performance Structural Biology at Scale</strong>
   </p>
   <p>
-    <a href="https://avenkat.github.io/sicifus"><strong>Documentation</strong></a> ·
+    <a href="https://arikat.github.io/sicifus"><strong>Documentation</strong></a> ·
     <a href="#installation"><strong>Installation</strong></a> ·
     <a href="#quick-start"><strong>Quick Start</strong></a>
   </p>
