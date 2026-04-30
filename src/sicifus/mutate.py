@@ -172,7 +172,7 @@ class InterfaceMutationResult:
 def _topology_to_pdb(topology, positions) -> str:
     from openmm.app import PDBFile
     buf = io.StringIO()
-    PDBFile.writeFile(topology, positions, buf)
+    PDBFile.writeFile(topology, positions, buf, keepIds=True)
     return buf.getvalue()
 
 
@@ -622,6 +622,8 @@ class MutationEngine:
 
         pdb_text = _load_pdb(source)
         fixer = _pdb_string_to_fixer(pdb_text)
+        # Call findMissingResidues() to initialize attribute, but don't add them
+        # (preserves original PDB numbering)
         fixer.findMissingResidues()
         fixer.findMissingAtoms()
         fixer.addMissingAtoms()
@@ -672,9 +674,11 @@ class MutationEngine:
         pH: float = 7.0,
         max_iterations: int = 2000,
     ) -> RepairResult:
-        """Repair a structure: fix missing atoms/residues, add hydrogens, minimise.
+        """Repair a structure: fix missing atoms, add hydrogens, minimise.
 
-        Repairs protein structure by fixing clashes and adding missing atoms.
+        Repairs protein structure by fixing clashes and adding missing atoms
+        within existing residues. Does NOT add missing N/C-terminal residues
+        to preserve original PDB numbering.
 
         Args:
             source: PDB file path, PDB string, or Polars DataFrame of atoms.
@@ -690,7 +694,9 @@ class MutationEngine:
         pdb_text = _load_pdb(source)
         fixer = _pdb_string_to_fixer(pdb_text)
 
-        fixer.findMissingResidues()
+        # Initialize missingResidues as empty dict to preserve original PDB numbering
+        # (don't add terminal residues - keeps user mutation positions aligned with PDB)
+        fixer.missingResidues = {}
         fixer.findMissingAtoms()
         fixer.addMissingAtoms()
         fixer.addMissingHydrogens(pH)
@@ -736,7 +742,9 @@ class MutationEngine:
         """
         pdb_text = _load_pdb(source)
         fixer = _pdb_string_to_fixer(pdb_text)
-        fixer.findMissingResidues()
+        # Initialize missingResidues as empty dict to preserve original PDB numbering
+        # (don't add terminal residues - keeps user mutation positions aligned with PDB)
+        fixer.missingResidues = {}
         fixer.findMissingAtoms()
         fixer.addMissingAtoms()
         fixer.addMissingHydrogens(7.0)
@@ -752,6 +760,59 @@ class MutationEngine:
             energy_terms=terms,
             pdb_string=pdb_out,
         )
+
+    # ------------------------------------------------------------------
+    # Helper: Show available residues
+    # ------------------------------------------------------------------
+
+    def show_residues(self, source, chain: str = "A") -> pl.DataFrame:
+        """Show what residues are available in the structure for mutation.
+
+        This is useful because:
+        1. Crystal structures often have missing N/C-terminal residues
+        2. Residue numbering may not start at 1
+        3. There may be gaps in numbering (missing loops)
+
+        The positions shown here match what you should use for mutations.
+        We do NOT add missing residues, so the numbering matches the PDB file.
+
+        Args:
+            source: PDB file path, PDB string, or Polars DataFrame
+            chain: Chain ID to show (default 'A')
+
+        Returns:
+            DataFrame with columns [position, residue_name, one_letter_code, mutation_example]
+
+        Example:
+            >>> engine = MutationEngine()
+            >>> residues = engine.show_residues("1BNI.pdb", chain="A")
+            >>> print(residues)
+            # Shows: position 3 = VAL (V), position 4 = ILE (I), ...
+            # Use these positions for mutations: "V3A", "I4A", etc.
+        """
+        from pdbfixer import PDBFixer
+
+        pdb_text = _load_pdb(source)
+        fixer = _pdb_string_to_fixer(pdb_text)
+
+        # Get residues as they are in the PDB file
+        # Do NOT call findMissingResidues() - we want the actual numbering
+        available_residues = []
+        for res_chain in fixer.topology.chains():
+            if res_chain.id != chain:
+                continue
+            for residue in res_chain.residues():
+                if residue.name in STANDARD_RESIDUES:
+                    available_residues.append({
+                        "position": int(residue.id),
+                        "residue_name": residue.name,
+                        "one_letter_code": THREE_TO_ONE.get(residue.name, "?"),
+                        "mutation_example": f"{THREE_TO_ONE.get(residue.name, '?')}{residue.id}A",
+                    })
+
+        df = pl.DataFrame(available_residues).sort("position")
+
+        return df
 
     # ------------------------------------------------------------------
     # Mutate (BuildModel equivalent)
@@ -820,7 +881,10 @@ class MutationEngine:
         else:
             pdb_text = _load_pdb(source)
             fixer_wt = _pdb_string_to_fixer(pdb_text)
-            fixer_wt.findMissingResidues()
+            # Initialize missingResidues as empty dict to preserve original PDB numbering
+            # (don't add terminal residues - keeps user mutation positions aligned with PDB)
+            fixer_wt.missingResidues = {}
+            # Only add missing atoms within existing residues
             fixer_wt.findMissingAtoms()
             fixer_wt.addMissingAtoms()
             fixer_wt.addMissingHydrogens(7.0)
@@ -834,7 +898,9 @@ class MutationEngine:
 
         # --- Build mutant from the (repaired) WT PDB ---
         fixer_mut = _pdb_string_to_fixer(pdb_text)
-        fixer_mut.findMissingResidues()
+        # Initialize missingResidues as empty dict to preserve original PDB numbering
+        # (preserves user mutation positions to match PDB file as written)
+        fixer_mut.missingResidues = {}
 
         pdbfixer_mutations = []
         for m in parsed:
@@ -842,7 +908,17 @@ class MutationEngine:
 
         chains_used = {m.chain for m in parsed}
         for chain_id in chains_used:
-            fixer_mut.applyMutations(pdbfixer_mutations, chain_id)
+            try:
+                fixer_mut.applyMutations(pdbfixer_mutations, chain_id)
+            except ValueError as e:
+                # Provide helpful error message about residue numbering
+                print(f"\n❌ Mutation failed: {e}")
+                print(f"\n💡 TIP: Use engine.show_residues() to see available residues")
+                print(f"   Example: residues = engine.show_residues(source, chain='{chain_id}')")
+                raise ValueError(
+                    f"Mutation failed. {e}\n"
+                    f"Use engine.show_residues() to see available residues."
+                ) from e
 
         fixer_mut.findMissingAtoms()
         fixer_mut.addMissingAtoms()
@@ -961,7 +1037,9 @@ class MutationEngine:
 
         pdb_text = _load_pdb(source)
         fixer = _pdb_string_to_fixer(pdb_text)
-        fixer.findMissingResidues()
+        # Initialize missingResidues as empty dict to preserve original PDB numbering
+        # (don't add terminal residues - keeps user mutation positions aligned with PDB)
+        fixer.missingResidues = {}
         fixer.findMissingAtoms()
         fixer.addMissingAtoms()
         fixer.addMissingHydrogens(7.0)
@@ -1043,7 +1121,7 @@ class MutationEngine:
         # --- Step 2: Apply all mutations to create mutant complex ---
         print("Applying mutations to complex...")
         fixer_mut = _pdb_string_to_fixer(pdb_text)
-        fixer_mut.findMissingResidues()
+        # Skip findMissingResidues() to preserve original PDB numbering
 
         # Parse mutations
         mutations_by_chain = {}
@@ -1407,6 +1485,7 @@ class MutationEngine:
         max_iterations: int = 2000,
         n_runs: int = 3,
         constrain_backbone: bool = True,
+        keep_statistics: bool = False,
         _repair_cache: Optional[_RepairCache] = None,
     ) -> pl.DataFrame:
         """Run every mutation in a DataFrame and return results.
@@ -1425,12 +1504,15 @@ class MutationEngine:
             max_iterations: Minimisation steps per mutation (default 2000).
             n_runs: Independent minimisation runs per mutation (default 3).
             constrain_backbone: Restrain backbone during minimisation.
+            keep_statistics: If True, include statistical fields (mean, SD, CI)
+                           in the output (default False).
             _repair_cache: Optional pre-processed WT from :meth:`prepare`.
                            If not provided, one is created automatically.
 
         Returns:
             Polars DataFrame with the input columns plus
             ``[wt_energy, mutant_energy, ddg_kcal_mol]``.
+            If keep_statistics=True, also includes ``[ddg_mean, ddg_sd, ddg_ci_95_low, ddg_ci_95_high, cv]``.
         """
         if "mutation" not in mutations_df.columns:
             raise ValueError("DataFrame must contain a 'mutation' column.")
@@ -1456,18 +1538,38 @@ class MutationEngine:
                     n_runs=n_runs,
                     max_iterations=max_iterations,
                     constrain_backbone=constrain_backbone,
+                    keep_statistics=keep_statistics,
                     _repair_cache=_repair_cache,
                 )
                 ddg_val = list(result.ddg.values())[0]
                 wt_e = result.wt_energy
                 mut_e = list(result.mutant_energies.values())[0]
+
+                # Extract statistical fields if available
+                out = {**row, "wt_energy": wt_e, "mutant_energy": mut_e, "ddg_kcal_mol": ddg_val}
+
+                if keep_statistics and result.ddg_mean is not None:
+                    label = list(result.ddg.keys())[0]
+                    out["ddg_mean"] = result.ddg_mean[label]
+                    out["ddg_sd"] = result.ddg_sd[label]
+                    out["ddg_ci_95_low"] = result.ddg_ci_95[label][0]
+                    out["ddg_ci_95_high"] = result.ddg_ci_95[label][1]
+                    out["cv"] = result.convergence_metric[label]
+
             except Exception as e:
                 print(f"  [{i+1}/{total}] {mut_str} chain {chain_id}: FAILED ({e})")
                 ddg_val = float("nan")
                 wt_e = float("nan")
                 mut_e = float("nan")
+                out = {**row, "wt_energy": wt_e, "mutant_energy": mut_e, "ddg_kcal_mol": ddg_val}
 
-            out = {**row, "wt_energy": wt_e, "mutant_energy": mut_e, "ddg_kcal_mol": ddg_val}
+                if keep_statistics:
+                    out["ddg_mean"] = float("nan")
+                    out["ddg_sd"] = float("nan")
+                    out["ddg_ci_95_low"] = float("nan")
+                    out["ddg_ci_95_high"] = float("nan")
+                    out["cv"] = float("nan")
+
             result_rows.append(out)
             print(f"  [{i+1}/{total}] {mut_str} chain {chain_id}: ddG = {ddg_val:+.2f} kcal/mol")
 
@@ -1548,7 +1650,7 @@ class MutationEngine:
         # Build mutant structure (simplified - just apply mutations)
         pdb_text = _load_pdb(source)
         fixer_mut = _pdb_string_to_fixer(pdb_text)
-        fixer_mut.findMissingResidues()
+        # Skip findMissingResidues() to preserve original PDB numbering
 
         pdbfixer_mutations = []
         for m in parsed:
@@ -1556,7 +1658,17 @@ class MutationEngine:
 
         chains_used = {m.chain for m in parsed}
         for chain_id in chains_used:
-            fixer_mut.applyMutations(pdbfixer_mutations, chain_id)
+            try:
+                fixer_mut.applyMutations(pdbfixer_mutations, chain_id)
+            except ValueError as e:
+                # Provide helpful error message about residue numbering
+                print(f"\n❌ Mutation failed: {e}")
+                print(f"\n💡 TIP: Use engine.show_residues() to see available residues")
+                print(f"   Example: residues = engine.show_residues(source, chain='{chain_id}')")
+                raise ValueError(
+                    f"Mutation failed. {e}\n"
+                    f"Use engine.show_residues() to see available residues."
+                ) from e
 
         fixer_mut.findMissingAtoms()
         fixer_mut.addMissingAtoms()

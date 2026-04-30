@@ -10,6 +10,14 @@ build/
 # Claude Code
 .claude/
 CLAUDE.md
+ATOM_ALIGNMENT_GUIDE.md
+ATOM_ALIGNMENT_SUMMARY.md
+MUTATION_APPROACHES_COMPARISON.md
+RESIDUE_NUMBERING_FIX.md
+SERRANO1993_INTEGRATION.md
+VARIANT_GENERATION_SUMMARY.md
+verify_fix.md
+serrano1993.pdf
 
 # Validation demo outputs
 validation_data/

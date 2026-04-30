@@ -1,0 +1,18 @@
+mutation,chain,experimental_ddg_kcal_mol,location,notes,reference
+Q15I,A,-0.96,alpha_helix_1,Gln to Ile - breaks hydrogen bond,Serrano1993_Table3
+T16R,A,-0.53,alpha_helix_1,Thr to Arg - favorable electrostatic,Serrano1993_Table3
+H18K,A,1.19,alpha_helix_1,His to Lys - destabilizing,Serrano1993_Table3
+K19R,A,-0.21,alpha_helix_1,Lys to Arg - conservative,Serrano1993_Table3
+E29Q,A,0.01,alpha_helix_2,Glu to Gln - neutral,Serrano1993_Table3
+Q31S,A,0.25,alpha_helix_2,Gln to Ser - slight destabilizing,Serrano1993_Table3
+D44E,A,-0.08,loop,Asp to Glu - nearly neutral,Serrano1993_Table3
+I55V,A,0.29,beta_strand_1,Ile to Val - buried hydrophobic,Serrano1993_Table3
+K62R,A,0.48,loop,Lys to Arg - guanosine binding loop,Serrano1993_Table3
+G65S,A,-0.51,loop,Gly to Ser - stabilizing,Serrano1993_Table3
+K66A,A,-0.25,alpha_helix_2,Lys to Ala - stabilizing,Serrano1993_Table3
+T79V,A,-0.29,loop,Thr to Val - stabilizing,Serrano1993_Table3
+S85A,A,0.12,loop,Ser to Ala - slight destabilizing,Serrano1993_Table3
+I88L,A,0.28,beta_strand_3,Ile to Leu - conservative,Serrano1993_Table3
+L89V,A,0.27,beta_strand_3,Leu to Val - conservative,Serrano1993_Table3
+Q104A,A,0.21,loop,Gln to Ala - destabilizing,Serrano1993_Table3
+K108R,A,-0.93,loop,Lys to Arg - stabilizing,Serrano1993_Table3
