@@ -9,7 +9,8 @@ from .io import CIFLoader
 from .align import StructuralAligner
 from .analysis import AnalysisToolkit, LigandAnalyzer
 from .energy import XTBScorer
-from .mutate import MutationEngine, Mutation, RepairResult, StabilityResult, MutationResult, BindingResult, InterfaceMutationResult, _RepairCache
+from .empirical import EmpiricalScorer
+from .mutate import MutationEngine, Mutation, RepairResult, StabilityResult, MutationResult, BindingResult, InterfaceMutationResult, _RepairCache, THREE_TO_ONE, ALL_AMINO_ACIDS
 from .visualization import (
     plot_ddg, plot_energy_terms, plot_position_scan_heatmap,
     plot_alanine_scan, plot_ddg_distribution
@@ -37,6 +38,7 @@ class Sicifus:
         self.ligand_analyzer = LigandAnalyzer()
         self.xtb_scorer = XTBScorer(work_dir=xtb_work_dir)
         self.mutation_engine = MutationEngine(work_dir=str(self.db_path / "mutate_work"))
+        self.empirical_scorer = EmpiricalScorer(work_dir=str(self.db_path / "empirical_work"))
         
         self._backbone_lf: Optional[pl.LazyFrame] = None
         self._heavy_atoms_lf: Optional[pl.LazyFrame] = None
@@ -1267,38 +1269,220 @@ class Sicifus:
         pdb_text = self._structure_to_pdb(structure_id)
         return self.mutation_engine.repair(pdb_text, **kwargs)
 
-    def calculate_stability(self, structure_id: str, **kwargs) -> StabilityResult:
-        """Calculate total potential energy with per-term decomposition.
-
-        Calculates protein stability using energy minimization.
+    def calculate_stability(
+        self, structure_id: str, method: str = "empirical", **kwargs
+    ) -> StabilityResult:
+        """Calculate total folding energy with per-term decomposition.
 
         Args:
             structure_id: ID of the structure in the database.
-            **kwargs: Forwarded to :meth:`MutationEngine.calculate_stability`.
+            method: ``"empirical"`` (default, no-MD weighted-term energy) or
+                    ``"openmm"`` (minimised MM potential, reference).
+            **kwargs: OpenMM: forwarded to :meth:`MutationEngine.calculate_stability`.
 
         Returns:
-            StabilityResult with total energy (kcal/mol) and per-force-term breakdown.
+            StabilityResult with total energy (kcal/mol) and per-term breakdown.
         """
         pdb_text = self._structure_to_pdb(structure_id)
-        return self.mutation_engine.calculate_stability(pdb_text, **kwargs)
+        if method == "openmm":
+            return self.mutation_engine.calculate_stability(pdb_text, **kwargs)
+        if method == "empirical":
+            e = self.empirical_scorer.score(pdb_text)
+            terms = e.as_dict()
+            return StabilityResult(
+                total_energy=terms.pop("total"),
+                energy_terms=terms,
+                pdb_string=pdb_text,
+            )
+        raise ValueError(
+            f"Unknown method {method!r}; expected 'empirical' or 'openmm'.")
+
+    def binding_ddg(
+        self,
+        structure_id: str,
+        mutations: List[Union[Mutation, str]],
+        mutated_chains,
+        chain: str = "A",
+        n_builds: int = 3,
+        radius: float = 8.0,
+    ) -> MutationResult:
+        """Empirical binding ΔΔG for an interface mutation (no MD).
+
+        Uses ``ΔΔG_bind = ΔΔG_fold(complex) − ΔΔG_fold(isolated mutated
+        partner)`` via :meth:`EmpiricalScorer.score_binding_mutation`, averaged
+        over ``n_builds`` builds.  Positive = the mutation weakens binding.  This
+        is the fast empirical counterpart to the OpenMM :meth:`mutate_interface`.
+
+        Args:
+            structure_id: ID of the complex (all chains) in the database.
+            mutations: Mutations to apply (objects or strings).
+            mutated_chains: Chain id(s) of the partner carrying the mutation.
+            chain: Default chain for parsing mutation strings.
+            n_builds: Independent builds to average (placement-noise control).
+            radius: Local shell radius (Å).
+
+        Returns:
+            MutationResult whose ``ddg`` is the binding ΔΔG.
+        """
+        import numpy as np
+
+        pdb_text = self._structure_to_pdb(structure_id)
+        ddgs, last = [], None
+        for _ in range(max(1, n_builds)):
+            wt_pdb, mut_pdb = self.mutation_engine.build_pdb_pair(
+                pdb_text, mutations, chain=chain)
+            last = self.empirical_scorer.score_binding_mutation(
+                wt_pdb, mut_pdb, mutations, mutated_chains,
+                chain=chain, radius=radius)
+            ddgs.append(list(last.ddg.values())[0])
+        label = next(iter(last.ddg))
+        last.ddg[label] = round(float(np.mean(ddgs)), 4)
+        return last
 
     def mutate_structure(
-        self, structure_id: str, mutations: List[Union[Mutation, str]], **kwargs
+        self,
+        structure_id: str,
+        mutations: List[Union[Mutation, str]],
+        method: str = "empirical",
+        chain: str = "A",
+        **kwargs,
     ) -> MutationResult:
-        """Apply point mutations, minimise, and compute ddG.
+        """Apply point mutations and compute ddG.
+
+        Two scoring backends are available:
+
+        - ``method="empirical"`` (default): fast FoldX-style empirical scorer
+          (no MD) via :class:`~sicifus.empirical.EmpiricalScorer`.  Structures
+          are built (atoms + hydrogens) and the mutated side chain is repacked;
+          ΔΔG is scored over a local shell and averaged across ``n_builds``
+          builds.  Seconds per mutation, no minimisation.
+        - ``method="openmm"``: physics-based reference — build, minimise, and
+          score via :meth:`MutationEngine.mutate` using a thermodynamic cycle
+          with an unfolded reference state.  Slower (minutes); requires the
+          ``[energy]`` extra.  Kept as a reference; empirical is the default.
 
         Args:
             structure_id: ID of the structure in the database.
             mutations: List of Mutation objects or strings
                        (e.g. ``'G13L'`` for Gly at position 13 to Leu).
-            **kwargs: Forwarded to :meth:`MutationEngine.mutate`.
+            method: ``"empirical"`` (default) or ``"openmm"``.
+            chain: Default chain ID for parsing mutation strings.
+            **kwargs: Empirical: ``n_builds`` (default 3), ``radius`` (default
+                      8 Å).  OpenMM: forwarded to :meth:`MutationEngine.mutate`.
 
         Returns:
             MutationResult with wild-type energy, mutant energy, ddG, and
-            mutant PDB strings.
+            an ``energy_terms`` DataFrame (shape identical for both methods).
         """
         pdb_text = self._structure_to_pdb(structure_id)
-        return self.mutation_engine.mutate(pdb_text, mutations, **kwargs)
+        if method == "empirical":
+            n_builds = int(kwargs.pop("n_builds", 3))
+            radius = kwargs.pop("radius", 8.0)
+            return self._empirical_mutate(
+                pdb_text, mutations, chain=chain,
+                n_builds=n_builds, radius=radius)
+        if method == "openmm":
+            return self.mutation_engine.mutate(
+                pdb_text, mutations, chain=chain, **kwargs)
+        raise ValueError(
+            f"Unknown method {method!r}; expected 'empirical' or 'openmm'.")
+
+    def _empirical_mutate(
+        self,
+        pdb_text: str,
+        mutations,
+        chain: str = "A",
+        n_builds: int = 3,
+        radius=8.0,
+    ):
+        """Empirical ΔΔG averaged over ``n_builds`` independent structure builds.
+
+        PDBFixer places the rebuilt mutant side chain (and nearby hydrogens) in a
+        single, slightly non-deterministic conformation without repacking, so a
+        one-shot score can swing a few kcal/mol and occasionally throw an
+        outlier.  Averaging a handful of fast (no-MD) builds collapses that
+        placement variance.  The returned ``energy_terms`` gains a ``delta_std``
+        column reporting the spread across builds.
+        """
+        import numpy as np
+        import polars as pl
+
+        results = []
+        for _ in range(max(1, n_builds)):
+            wt_pdb, mut_pdb = self.mutation_engine.build_pdb_pair(
+                pdb_text, mutations, chain=chain)
+            results.append(self.empirical_scorer.score_mutation(
+                wt_pdb, mut_pdb, mutations, chain=chain, radius=radius))
+
+        if len(results) == 1:
+            return results[0]
+
+        label = next(iter(results[0].ddg))
+        ddgs = np.array([r.ddg[label] for r in results])
+
+        # Mean/std of each per-term delta across builds.
+        terms = results[0].energy_terms["term"].to_list()
+        deltas = np.array([r.energy_terms["delta"].to_numpy() for r in results])
+        wt_e = np.array([r.energy_terms["wt_energy"].to_numpy() for r in results])
+        mut_e = np.array([r.energy_terms["mutant_energy"].to_numpy() for r in results])
+        energy_terms = pl.DataFrame({
+            "term": terms,
+            "wt_energy": np.round(wt_e.mean(axis=0), 4),
+            "mutant_energy": np.round(mut_e.mean(axis=0), 4),
+            "delta": np.round(deltas.mean(axis=0), 4),
+            "delta_std": np.round(deltas.std(axis=0), 4),
+        })
+
+        return MutationResult(
+            wt_energy=round(float(wt_e.mean(axis=0)[terms.index("total")]), 4),
+            mutant_energies={label: round(
+                float(mut_e.mean(axis=0)[terms.index("total")]), 4)},
+            ddg={label: round(float(ddgs.mean()), 4)},
+            mutant_pdbs=dict(results[0].mutant_pdbs),
+            energy_terms=energy_terms,
+        )
+
+    def _empirical_scan(self, pdb_text, chain, targets, positions, n_builds, radius):
+        """Shared empirical scan: ΔΔG for (position → target) over ``targets``.
+
+        ``targets`` maps a position to the mutant residue(s) to try there; for an
+        alanine scan it is every eligible position → ``ALA``, for a position scan
+        every requested position → all 20 amino acids.  Returns rows with the
+        position-scan schema; the alanine caller drops the ``mut_residue`` column.
+        """
+        residues = self.mutation_engine.show_residues(pdb_text, chain=chain)
+        wt_by_pos = {
+            row["position"]: row["residue_name"]
+            for row in residues.iter_rows(named=True)
+        }
+        scan_positions = positions if positions is not None else list(wt_by_pos)
+
+        rows = []
+        for pos in scan_positions:
+            wt_res = wt_by_pos.get(pos)
+            if wt_res is None:
+                continue
+            for mut_res in targets(pos, wt_res):
+                if mut_res == wt_res:
+                    continue
+                mut = Mutation(chain=chain, position=pos,
+                               wt_residue=wt_res, mut_residue=mut_res)
+                try:
+                    result = self._empirical_mutate(
+                        pdb_text, [mut], chain=chain,
+                        n_builds=n_builds, radius=radius)
+                    ddg_val = round(list(result.ddg.values())[0], 4)
+                except Exception as e:  # noqa: BLE001
+                    print(f"  {mut.label}: FAILED ({e})")
+                    ddg_val = float("nan")
+                rows.append({
+                    "chain": chain, "position": pos, "wt_residue": wt_res,
+                    "mut_residue": mut_res, "ddg_kcal_mol": ddg_val,
+                })
+        return pl.DataFrame(rows, schema={
+            "chain": pl.Utf8, "position": pl.Int64, "wt_residue": pl.Utf8,
+            "mut_residue": pl.Utf8, "ddg_kcal_mol": pl.Float64,
+        })
 
     def load_mutations(self, csv_path: str) -> pl.DataFrame:
         """Load a mutation list from a CSV file.
@@ -1359,7 +1543,7 @@ class Sicifus:
 
     def alanine_scan(
         self, structure_id: str, chain: str, positions: Optional[List[int]] = None,
-        **kwargs
+        method: str = "empirical", **kwargs
     ) -> pl.DataFrame:
         """Alanine scan: mutate each position to Ala and report ddG.
 
@@ -1369,16 +1553,32 @@ class Sicifus:
             structure_id: ID of the structure in the database.
             chain: Chain ID to scan.
             positions: Specific residue numbers. If None, scans all eligible residues.
-            **kwargs: Forwarded to :meth:`MutationEngine.alanine_scan`.
+            method: ``"empirical"`` (default, fast) or ``"openmm"`` (reference).
+            **kwargs: Empirical: ``n_builds``, ``radius``.  OpenMM: forwarded to
+                      :meth:`MutationEngine.alanine_scan`.
 
         Returns:
             DataFrame with columns [chain, position, wt_residue, ddg_kcal_mol].
         """
         pdb_text = self._structure_to_pdb(structure_id)
-        return self.mutation_engine.alanine_scan(pdb_text, chain, positions, **kwargs)
+        if method == "openmm":
+            return self.mutation_engine.alanine_scan(
+                pdb_text, chain, positions, **kwargs)
+        if method == "empirical":
+            n_builds = int(kwargs.pop("n_builds", 3))
+            radius = kwargs.pop("radius", 8.0)
+            # Skip Ala (no-op) and Gly (no Cβ to replace).
+            df = self._empirical_scan(
+                pdb_text, chain,
+                targets=lambda pos, wt: [] if wt in ("ALA", "GLY") else ["ALA"],
+                positions=positions, n_builds=n_builds, radius=radius)
+            return df.drop("mut_residue")
+        raise ValueError(
+            f"Unknown method {method!r}; expected 'empirical' or 'openmm'.")
 
     def position_scan(
-        self, structure_id: str, chain: str, positions: List[int], **kwargs
+        self, structure_id: str, chain: str, positions: List[int],
+        method: str = "empirical", **kwargs
     ) -> pl.DataFrame:
         """Scan all 20 amino acids at specified positions.
 
@@ -1388,14 +1588,27 @@ class Sicifus:
             structure_id: ID of the structure in the database.
             chain: Chain ID.
             positions: List of residue numbers to scan.
-            **kwargs: Forwarded to :meth:`MutationEngine.position_scan`.
+            method: ``"empirical"`` (default, fast) or ``"openmm"`` (reference).
+            **kwargs: Empirical: ``n_builds``, ``radius``.  OpenMM: forwarded to
+                      :meth:`MutationEngine.position_scan`.
 
         Returns:
             DataFrame with columns
             [chain, position, wt_residue, mut_residue, ddg_kcal_mol].
         """
         pdb_text = self._structure_to_pdb(structure_id)
-        return self.mutation_engine.position_scan(pdb_text, chain, positions, **kwargs)
+        if method == "openmm":
+            return self.mutation_engine.position_scan(
+                pdb_text, chain, positions, **kwargs)
+        if method == "empirical":
+            n_builds = int(kwargs.pop("n_builds", 3))
+            radius = kwargs.pop("radius", 8.0)
+            return self._empirical_scan(
+                pdb_text, chain,
+                targets=lambda pos, wt: ALL_AMINO_ACIDS,
+                positions=positions, n_builds=n_builds, radius=radius)
+        raise ValueError(
+            f"Unknown method {method!r}; expected 'empirical' or 'openmm'.")
 
     def per_residue_energy(self, structure_id: str, **kwargs) -> pl.DataFrame:
         """Approximate per-residue energy contribution via Ala-subtraction.
@@ -1520,6 +1733,10 @@ class Sicifus:
 
         Returns:
             InterfaceMutationResult with ΔΔG_binding and component energies.
+
+        Note:
+            This is the OpenMM (minimised, reference) interface path.  For the
+            fast no-MD empirical binding ΔΔG, use :meth:`binding_ddg`.
         """
         pdb_text = self._structure_to_pdb(structure_id)
         return self.mutation_engine.mutate_interface(

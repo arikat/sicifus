@@ -70,7 +70,7 @@ pip install ".[energy]"
 conda install -c conda-forge xtb
 ```
 
-The mutation engine works entirely through OpenMM and PDBFixer — no external binaries required.
+Mutation analysis needs the `[energy]` extra (PDBFixer + OpenMM) — no external binaries required. The default **empirical** ΔΔG backend runs no MD but still uses PDBFixer to build structures, so the extra is required for either backend; only the OpenMM reference path (`method="openmm"`) runs minimisation.
 
 ## Full Installation
 To install everything:

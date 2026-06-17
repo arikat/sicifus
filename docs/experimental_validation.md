@@ -9,6 +9,14 @@ Sicifus now includes a comprehensive experimental validation framework that comp
 3. Calculate industry-standard performance metrics
 4. Validate custom force field parameters or methods
 
+!!! note "Empirical is the default backend"
+    Real predictions use the fast empirical scorer by default (`method="openmm"`
+    selects the MD reference). To *fit* the empirical weights against an
+    experimental set (rather than only benchmark them), see
+    `examples/calibrate_empirical.py` and the
+    [Calibration section](tutorials/mutations.md#calibrating-the-empirical-weights)
+    — it reports leave-one-out cross-validated R/RMSE/MAE.
+
 ---
 
 ## Quick Start

@@ -1,0 +1,14 @@
+{
+  "_provenance": "Calibrated by examples/calibrate_empirical.py --format skempi (non-negative least squares of per-term binding-ΔΔG deltas vs experiment). Binding regime: ΔΔG_bind from score_binding_mutation. Fit on 53 SKEMPI v2 single point mutations across 9 complexes (1CSE,2SIC,1ACB,1CHO,1R0R,1PPF,1SBN,2PTC,1BRS). PRELIMINARY baseline — expand for production. NOTE: these are BINDING weights, a different regime from the folding-stability empirical_weights.json; load explicitly via EmpiricalScorer(weights=...), do not use as the stability default.",
+  "_metrics": {"n": 53, "mode": "binding", "loo_cv_r": 0.513, "loo_cv_rmse": 2.346, "loo_cv_mae": 1.88},
+  "weights": {
+    "vdw": 0.4188,
+    "clash": 0.2192,
+    "solvH": 0.0,
+    "solvP": 3.369,
+    "hbond": 0.5315,
+    "elec": 0.3686,
+    "mc_entropy": 0.0,
+    "sc_entropy": 0.0
+  }
+}

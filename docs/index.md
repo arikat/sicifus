@@ -13,7 +13,7 @@ Unlike traditional tools that rely on slow, file-based loops, Sicifus compiles s
 -   **Fast Structural Clustering**: Greedy centroid-based clustering with 3Di k-mer prefiltering — cluster thousands of structures in seconds without computing a full distance matrix.
 -   **Structural Phylogenetics**: Generate RMSD-based phylogenetic trees with k-mer prefiltered alignment (20-100x faster) and structural similarity networks.
 -   **Ligand Analysis**: Specialized tools to identify and visualize ligand-binding residues across massive datasets.
--   **Mutation & Stability**: Physics-based in silico mutagenesis, stability scoring, and binding energy calculation using OpenMM — using open-source OpenMM.
+-   **Mutation & Stability**: In silico mutagenesis, stability scoring, and binding ΔΔG. A fast, calibrated **empirical** scorer (no MD) is the default, with an **OpenMM** physics-based path available as a reference.
 
 ## Architecture
 

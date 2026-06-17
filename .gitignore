@@ -20,7 +20,9 @@ verify_fix.md
 serrano1993.pdf
 
 # Validation demo outputs
-validation_data/
+# Ignore downloaded datasets/structures but keep the directory's README.
+validation_data/*
+!validation_data/README.md
 validation_plot.png
 error_distribution.png
 *_validation.png
@@ -31,9 +33,15 @@ error_distribution.png
 *_clean.pdb
 *_raw.pdb
 *_repaired.pdb
+# Bundled demo structure — downloadable from RCSB, not redistributed in git.
+examples/1BNI.pdb
 ddg_plot.png
 scan_heatmap.png
 alanine_scan.png
+# Notebook-generated demo figures and scratch work dirs
+examples/barnase_*.png
+mutate_work/
+empirical_work/
 terms.png
 dist.png
 interaction_network.png

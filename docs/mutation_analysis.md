@@ -4,6 +4,79 @@
 
 This document summarizes the industry-standard mutation analysis features implemented in Sicifus, including statistical rigor and visualization capabilities.
 
+## ΔΔG Methods (v0.6.0)
+
+Two backends are available. **Empirical is the default** (fast, no MD); OpenMM
+is the opt-in physics reference. Select with `method=` on
+`Sicifus.mutate_structure` (and `alanine_scan`, `position_scan`,
+`calculate_stability`):
+
+```python
+db.mutate_structure("1BNI", ["H18K"])                      # empirical (default)
+db.mutate_structure("1BNI", ["H18K"], method="openmm")     # physics reference
+```
+
+### OpenMM (physics, thermodynamic cycle)
+
+`MutationEngine.mutate` minimises the structure (OpenMM AMBER14 + GBn2) and
+computes ΔΔG via a **thermodynamic cycle with an unfolded reference state**:
+
+```
+ddG = (E_folded^mut − E_folded^wt) − Σ_i [E_unfolded(mut_res_i) − E_unfolded(wt_res_i)]
+```
+
+The unfolded reference is a capped, isolated residue (ACE-X-NME), built once per
+residue type and cached.
+
+> **Why this matters.** Earlier versions used the naive `ddG = E_mut − E_wt`.
+> That subtracts the absolute potential energies of two chemically different
+> molecules (different atom/term inventories), which is not a meaningful
+> quantity and gave large errors — e.g. Barnase **H18K** predicted ≈ −36 kcal/mol
+> vs experimental +1.19. The unfolded reference cancels each mutated residue's
+> intrinsic self-energy, fixing the baseline.
+>
+> Residual minimisation drift remains; keep `constrain_backbone=True`.
+
+### Empirical (FoldX-style, no MD) — default
+
+`sicifus.empirical.EmpiricalScorer` evaluates a built structure as a weighted
+sum of folding-referenced terms (van der Waals + clash, polar/apolar solvation
+via Shrake–Rupley SASA, hydrogen bonds, electrostatics, backbone/side-chain
+entropy). No minimisation — far faster, and `G_mut − G_wt` is well-posed because
+the terms are folding-referenced. It additionally:
+
+- **Repacks** the mutated side chain over a rotamer library (`repack`,
+  `sicifus.data.rotamers`), relieving the arbitrary clashing rotamer PDBFixer
+  builds.
+- Sums terms over a **local shell** around the mutation (`radius`), so distant
+  rebuild noise cancels.
+- **Averages** over `n_builds` independent builds (`delta_std` reports spread).
+- Uses **calibrated weights** (`sicifus/data/empirical_weights.json`), fit by
+  NNLS with leave-one-out CV; binding has its own
+  `empirical_weights_binding.json`.
+
+```python
+from sicifus import EmpiricalScorer
+from sicifus.mutate import MutationEngine
+
+eng = MutationEngine()
+wt_pdb, mut_pdb = eng.build_pdb_pair("1BNI.pdb", ["H18K"])
+scorer = EmpiricalScorer()
+result = scorer.score_mutation(wt_pdb, mut_pdb, ["H18K"])
+print(result.ddg["H18K"])
+print(result.energy_terms)   # [term, wt_energy, mutant_energy, delta]
+```
+
+For binding ΔΔG of interface mutations, `score_binding_mutation` (or
+`Sicifus.binding_ddg`) uses the cycle
+`ΔΔG_bind = ΔΔG_fold(complex) − ΔΔG_fold(isolated mutated partner)`.
+
+> **Caveat.** The calibrated weights are **preliminary baselines** (stability
+> leave-one-out R ≈ 0.49 on a barnase set; binding R ≈ 0.51 on a SKEMPI subset),
+> not a validated FoldX replacement. Recalibrate on a larger experimental set
+> with `examples/calibrate_empirical.py`. Binding uses a rigid two-body cycle
+> (no backbone relaxation on binding).
+
 ## Statistical Analysis Comparison
 
 ### Comparison Table
@@ -11,14 +84,22 @@ This document summarizes the industry-standard mutation analysis features implem
 | Feature | Commercial Tools | Sicifus | Status |
 |---------|-------|---------|--------|
 | **Energy Calculation** | AMBER/GROMOS force field | OpenMM AMBER14 + GBn2 | Equivalent |
-| **ddG Calculation** | Mutant - WT | Mutant - WT | Equivalent |
-| **Multiple Runs** | 5 runs (default) | Configurable (default 3) | Equivalent |
+| **ddG Calculation** | Mutant - WT | Thermodynamic cycle (unfolded ref) | **Improved** |
+| **Empirical scorer** | Empirical force field | `EmpiricalScorer` (FoldX-style, no MD, **default**; repack + calibrated weights) | **Default** |
+| **Multiple Runs** | 5 runs (default) | Configurable (default 1; runs are deterministic) | Changed |
 | **Mean ± SD** | Reports mean ± SD | Reports mean ± SD | **NEW** |
 | **95% Confidence Interval** | Reported | Reported (t-distribution) | **NEW** |
 | **Min/Max Range** | Reported | Reported | **NEW** |
 | **Convergence Metric** | Implicit | CV (SD/mean) with warnings | **NEW** |
 | **Best vs Mean** | Uses mean | Configurable (`use_mean` flag) | Enhanced |
 | **Per-term Breakdown** | dG by term | Per-force decomposition | Equivalent |
+
+> **Note on `n_runs` (v0.5.0).** The default is now `1`. OpenMM's
+> `LocalEnergyMinimizer` is deterministic, so repeated runs from the same start
+> coordinates produce identical energies — `n_runs > 1` only adds cost without
+> meaningful spread unless the minimisation start is perturbed between runs
+> (a planned enhancement). The statistical fields below are retained for that
+> future path and for callers that supply perturbed inputs.
 
 ### Statistical Enhancements
 

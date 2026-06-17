@@ -5,6 +5,106 @@ All notable changes to Sicifus will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-06-17
+
+### Changed
+- **Empirical scorer is now the default mutation backend.** `Sicifus.mutate_structure`,
+  `alanine_scan`, `position_scan`, and `calculate_stability` default to
+  `method="empirical"` (fast, no MD). The OpenMM path is retained as an opt-in
+  physics reference (`method="openmm"`) but is no longer the default. Note:
+  structure *building* (add atoms/hydrogens, apply mutation) still uses PDBFixer,
+  so the `[energy]` extra remains required for any mutation analysis — the change
+  is that no MD minimisation is run by default.
+
+### Added
+- **Locality-restricted empirical ΔΔG**: `EmpiricalScorer.score_mutation` now
+  sums energy terms only over a residue shell around the mutation site
+  (`radius`, default 8 Å). Whole-protein baselines (~10³ kcal/mol) made tiny
+  rebuild jitter swamp a ~1 kcal/mol signal; restricting to the shell removes
+  that non-cancelling noise. `radius=None` restores legacy whole-structure
+  scoring.
+- **Rotamer repacking** (`EmpiricalScorer.repack`, `sicifus.data.rotamers`):
+  the mutated side chain is rebuilt over a coarse staggered χ library plus its
+  native conformation; the lowest steric-energy (clash + vdW) rotamer is kept.
+  Native is always a candidate, so repacking never worsens a well-placed
+  residue — it only relieves the arbitrary, occasionally clashing rotamer
+  PDBFixer builds. Removes the run-to-run outliers (e.g. Barnase H18K no longer
+  swings to +6 kcal/mol).
+- **Build averaging** for the empirical path: `Sicifus.mutate(method="empirical",
+  n_builds=N)` averages ΔΔG over N independent builds and reports `delta_std`.
+- **Binding ΔΔG** (`EmpiricalScorer.score_binding_mutation`): interface
+  mutations via the cycle `ΔΔG_bind = ΔΔG_fold(complex) −
+  ΔΔG_fold(isolated mutated partner)`, reusing the locality + repack machinery.
+- **Weight calibration** (`examples/calibrate_empirical.py`): non-negative
+  least-squares fit of term weights to experimental ΔΔG with leave-one-out
+  cross-validation. Reads simple CSVs (ProTherm-style stability) or SKEMPI v2
+  exports (binding; ΔΔG from Kd, parsed from the `Mutation(s)_PDB` column);
+  auto-downloads/cleans PDBs; subsampling flags. Calibrated weights load
+  automatically from `data/empirical_weights.json` (stability) with a separate
+  `empirical_weights_binding.json` for the binding regime.
+- **Empirical scan/stability parity**: empirical `alanine_scan` / `position_scan`
+  (loops over the empirical scorer) and an empirical `calculate_stability`, plus
+  `Sicifus.binding_ddg` — the no-MD counterpart to `mutate_interface`.
+
+### Fixed
+- **Mutation/structure numbering guard** (`MutationEngine.build_pdb_pair`):
+  validates each mutation's wild-type residue against the structure and raises a
+  clear error (expected vs found, with `show_residues` hint) instead of
+  PDBFixer's cryptic failure. Catches sequence-vs-structure numbering mismatches
+  (e.g. SKEMPI's renumbered `Mutation(s)_cleaned` column).
+- **OpenMM `mutate` energy decomposition now ties out to ddG**: `energy_terms`
+  gains an `unfolded_reference` row and the `total` row equals the reported ddG
+  (folded force terms + unfolded reference = total = ddG), so the per-term
+  decomposition is consistent with the thermodynamic-cycle ddG.
+
+## [0.5.0] - 2026-06-15
+
+### Fixed
+- **Critical ΔΔG accuracy fix (thermodynamic cycle)**: the OpenMM mutation path
+  previously computed `ddG = E_mutant − E_wild-type` by subtracting the absolute
+  potential energies of two chemically different molecules (different atom/term
+  inventories), which is not a meaningful quantity. This produced large errors
+  (e.g. Barnase **H18K**: predicted ≈ −36 kcal/mol vs experimental +1.19).
+  - `MutationEngine.mutate` now uses a thermodynamic cycle with an unfolded
+    reference state:
+    `ddG = (E_folded^mut − E_folded^wt) − Σ[E_unfolded(mut_res) − E_unfolded(wt_res)]`
+  - Unfolded reference = capped, isolated residue (ACE-X-NME), built once per
+    residue type and cached (`_unfolded_cache`).
+  - The same correction is applied to per-chain stability ΔΔG in
+    `mutate_interface` (binding ΔΔG is self-referencing and unchanged).
+
+### Added
+- **Empirical (FoldX-style) ΔΔG scorer** (`sicifus.empirical.EmpiricalScorer`):
+  fast, no-MD scorer that evaluates a built structure as a weighted sum of
+  folding-referenced terms (van der Waals + clash, polar/apolar solvation via
+  Shrake–Rupley SASA, hydrogen bonding, electrostatics, backbone/side-chain
+  entropy). Because the terms are folding-referenced, `G_mut − G_wt` is
+  well-posed, sidestepping the absolute-MM-energy problem.
+  - `score(source) -> EmpiricalEnergy` (per-term breakdown).
+  - `score_mutation(wt, mutant, mutations) -> MutationResult` — same shape as the
+    OpenMM path, compatible with existing `visualization` helpers.
+  - Side-chain **rotamer repacking is a documented seam** (`repack()`, identity
+    in v1) for a later upgrade.
+  - Parameters in `sicifus.data.empirical_params` are published approximations
+    and are **not yet calibrated** against an experimental set (follow-up).
+- `Sicifus.mutate_structure(..., method="openmm" | "empirical")` to select the
+  backend; both return `MutationResult`.
+- `MutationEngine.build_pdb_pair(source, mutations)` — build WT + mutant PDBs
+  (atoms + hydrogens, no minimisation); used by the empirical path.
+- New fast test suite `tests/test_empirical.py` (18 tests, no OpenMM).
+
+### Changed
+- **Mutation performance**: `n_runs` default changed `3 → 1` in `mutate`,
+  `mutate_batch`, and `mutate_interface`. `LocalEnergyMinimizer` is deterministic,
+  so repeated runs from the same start coordinates were identical — they
+  multiplied cost (≈3×) and produced meaningless "statistics".
+- `mutate()` gained a `decompose` flag; scans (`alanine_scan`, `position_scan`,
+  `per_residue_energy`) and `mutate_batch` skip per-term decomposition (only ΔΔG
+  needed), saving two OpenMM `Context` builds per mutation.
+- WT energy decomposition is computed once and cached on `_RepairCache`
+  (`wt_terms`) instead of recomputed for every mutation in a batch/scan.
+- Net effect: ≈3× faster single `mutate`; ≈4–6× faster scans.
+
 ## [0.4.6] - 2026-04-17
 
 ### Fixed

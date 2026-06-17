@@ -1,0 +1,14 @@
+{
+  "_provenance": "Calibrated by examples/calibrate_empirical.py via non-negative least squares of per-term ΔΔG deltas against experimental values. PRELIMINARY: fit on 11 barnase (1BNI) point mutations only; recalibrate against ProTherm/SKEMPI for production use. hbond and elec went to zero — the coarse, angle-free forms of those terms did not improve the fit on this set and need a larger, charge-rich training set before trusting them.",
+  "_metrics": {"n": 11, "loo_cv_r": 0.493, "loo_cv_rmse": 0.862, "loo_cv_mae": 0.688},
+  "weights": {
+    "vdw": 0.1389,
+    "clash": 0.1838,
+    "solvH": 0.9303,
+    "solvP": 0.1597,
+    "hbond": 0.0,
+    "elec": 0.0,
+    "mc_entropy": 0.5592,
+    "sc_entropy": 0.5592
+  }
+}

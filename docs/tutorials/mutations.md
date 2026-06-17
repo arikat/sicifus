@@ -1,10 +1,30 @@
 # Mutation & Stability Engine
 
-Sicifus includes a physics-based mutation and stability engine powered by **OpenMM** and **PDBFixer**. It provides structure repair, in silico mutagenesis, stability scoring, binding energy calculation, and scanning — using open-source tools.
+Sicifus computes mutation ΔΔG with two backends:
+
+- **Empirical** (`EmpiricalScorer`) — **the default.** A fast, FoldX-style
+  weighted-term scorer with **no molecular dynamics**: it builds the mutant,
+  repacks the mutated side chain, and scores a local shell. Seconds per
+  mutation.
+- **OpenMM** (`MutationEngine`) — the physics reference. Builds, minimises
+  (AMBER ff14SB + GBn2 implicit solvent), and scores via a thermodynamic cycle.
+  Minutes per mutation. Opt in with `method="openmm"`.
+
+Both provide structure repair, in silico mutagenesis, stability scoring, binding
+ΔΔG, and scanning. All energies are in **kcal/mol**.
+
+!!! tip "Which should I use?"
+    Start with the default **empirical** backend — it is far faster and avoids
+    the local-minima fragility of minimisation. Use `method="openmm"` when you
+    want an explicit force-field reference. Empirical weights are calibrated
+    against experimental ΔΔG (leave-one-out R ≈ 0.5, a baseline — not a validated
+    FoldX replacement); see [Calibration](#calibrating-the-empirical-weights).
 
 ## Prerequisites
 
-The mutation engine requires `openmm` and `pdbfixer`, which are already part of the `[energy]` optional dependency group:
+Both backends build structures with **PDBFixer**, so the `[energy]` extra
+(`pdbfixer` + `openmm`) is required either way. The difference is that the
+empirical backend runs **no** minimisation.
 
 ```bash
 pip install "sicifus[energy]"
@@ -18,14 +38,18 @@ conda install -c conda-forge openmm pdbfixer
 
 ## How It Works
 
-Under the hood, the engine uses:
+**Empirical (default).** PDBFixer builds the wild-type and mutant (missing atoms,
+hydrogens, residue swap); the mutated side chain is **repacked** over a rotamer
+library to relieve clashes; ΔΔG is the difference of a weighted sum of
+folding-referenced terms (van der Waals + clash, polar/apolar solvation via
+Shrake–Rupley SASA, hydrogen bonds, electrostatics, conformational entropy),
+summed over a **local shell** around the mutation so distant noise cancels.
+Results are averaged over a few independent builds (`n_builds`).
 
-- **PDBFixer** to repair structures (missing atoms, residues, hydrogens) and apply mutations (residue swaps + sidechain rebuild).
-- **OpenMM** with the **AMBER ff14SB** force field and **GBn2 implicit solvent** to minimise structures and calculate potential energies.
-- **Harmonic backbone restraints** during mutation minimisation, allowing sidechain flexibility while keeping the backbone fixed.
-- **Force group decomposition** to report energy by term (bonds, angles, torsions, nonbonded, solvation).
-
-All energies are reported in **kcal/mol**.
+**OpenMM (reference).** PDBFixer repairs/mutates, then OpenMM (AMBER ff14SB + GBn2
+implicit solvent) minimises with harmonic backbone restraints and computes ΔΔG
+via a thermodynamic cycle (unfolded reference state), with force-group energy
+decomposition.
 
 ## Standalone vs. Database Usage
 
@@ -56,7 +80,54 @@ result = engine.calculate_stability(pdb_string)
 result = engine.calculate_stability(atoms_dataframe)
 ```
 
-The rest of this tutorial uses the standalone `MutationEngine` for clarity. Every method shown here has a corresponding wrapper on the `Sicifus` class that takes a `structure_id` instead.
+Every method has a corresponding wrapper on the `Sicifus` class that takes a
+`structure_id` instead of a PDB source. The `Sicifus` wrappers default to the
+**empirical** backend; the standalone `MutationEngine` is the OpenMM (reference)
+engine. The OpenMM-specific sections below (Repair, Stability, Single Mutations
+via `engine.mutate`, etc.) use the standalone engine for clarity.
+
+---
+
+## Quick Start (Empirical, Default)
+
+```python
+from sicifus import Sicifus
+
+db = Sicifus(db_path="./my_db")
+db.load()
+
+# Empirical ΔΔG (default backend) — fast, no MD
+result = db.mutate_structure("1bni", ["H18K"])
+print(result.ddg["H18K"])          # +0.6  (experimental +1.19)
+print(result.energy_terms)          # term, wt_energy, mutant_energy, delta, delta_std
+
+# Force the OpenMM physics reference instead
+result = db.mutate_structure("1bni", ["H18K"], method="openmm")
+```
+
+The empirical backend takes two tuning knobs:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `n_builds` | `3` | Independent builds averaged (collapses side-chain placement noise; `delta_std` reports the spread). |
+| `radius` | `8.0` | Local shell radius (Å) over which terms are summed; distant atoms cancel and are excluded. |
+
+```python
+result = db.mutate_structure("1bni", ["H18K"], n_builds=5, radius=8.0)
+```
+
+You can also use the scorer standalone on any PDB source:
+
+```python
+from sicifus import EmpiricalScorer, MutationEngine
+
+eng = MutationEngine()
+wt_pdb, mut_pdb = eng.build_pdb_pair("1bni.pdb", ["H18K"])   # build only (no MD)
+
+scorer = EmpiricalScorer()
+result = scorer.score_mutation(wt_pdb, mut_pdb, ["H18K"])
+print(result.ddg["H18K"])
+```
 
 ---
 
@@ -313,6 +384,12 @@ result = engine.mutate("protein.pdb", ["F13A"], n_runs=3)
 
 ## Binding Energy
 
+!!! tip "Empirical binding ΔΔG"
+    For a fast, no-MD binding ΔΔG of an interface *mutation*, use
+    `db.binding_ddg(structure_id, mutations, mutated_chains=...)` (empirical), the
+    counterpart to the OpenMM `mutate_interface`. The methods below are the
+    OpenMM reference path.
+
 `calculate_binding_energy()` calculates the binding energy between two groups of chains using a thermodynamic cycle:
 
 $$E_{\text{binding}} = E_{\text{complex}} - (E_{\text{chains\_A}} + E_{\text{chains\_B}})$$
@@ -344,7 +421,7 @@ print(result.interface_residues)
 
 ## Alanine Scanning
 
-`alanine_scan()` systematically mutates each position to alanine to identify energetic hotspot residues.
+`alanine_scan()` systematically mutates each position to alanine to identify energetic hotspot residues. The standalone `engine.alanine_scan` shown here is the OpenMM path; `db.alanine_scan(...)` defaults to the faster empirical backend (`method="openmm"` to switch).
 
 ```python
 # Scan specific positions
@@ -375,7 +452,7 @@ Large positive ddG values indicate hotspot residues whose sidechains are critica
 
 ## Position Scan (PSSM)
 
-`position_scan()` tests all 20 amino acids at specified positions, producing a position-specific scoring matrix.
+`position_scan()` tests all 20 amino acids at specified positions, producing a position-specific scoring matrix. As with the alanine scan, `db.position_scan(...)` defaults to the empirical backend; the standalone call below is the OpenMM path.
 
 ```python
 df = engine.position_scan(
@@ -427,7 +504,10 @@ print(df)
 
 ## Using via the Sicifus Database
 
-All methods above have wrappers on the `Sicifus` class that accept a `structure_id` instead of a PDB path:
+All methods above have wrappers on the `Sicifus` class that accept a
+`structure_id` instead of a PDB path. `mutate_structure`, `alanine_scan`,
+`position_scan`, and `calculate_stability` accept a `method` argument that
+defaults to `"empirical"`; pass `method="openmm"` for the physics reference.
 
 ```python
 from sicifus import Sicifus
@@ -435,31 +515,71 @@ from sicifus import Sicifus
 db = Sicifus(db_path="./my_db")
 db.load()
 
-# Repair
+# Repair (OpenMM)
 result = db.repair_structure("1crn")
 
-# Stability
+# Stability — empirical (default) or method="openmm"
 result = db.calculate_stability("1crn")
 
-# Single mutation
+# Single mutation — empirical by default
 result = db.mutate_structure("1crn", ["F13A"])
+result = db.mutate_structure("1crn", ["F13A"], method="openmm")   # reference
+
+# Binding ΔΔG (empirical, no MD): name the partner that carries the mutation
+result = db.binding_ddg("my_complex", ["A30W"], mutated_chains="A")
 
 # Batch mutations from CSV
 mutations_df = db.load_mutations("mutations.csv")
 results = db.mutate_batch("1crn", mutations_df)
 
-# Binding energy
+# Binding energy (OpenMM thermodynamic cycle)
 result = db.calculate_binding_energy("my_complex", chains_a=["A"], chains_b=["B"])
 
-# Alanine scan
+# Scans — empirical by default (method="openmm" available)
 df = db.alanine_scan("1crn", chain="A", positions=[7, 13])
-
-# Position scan
 df = db.position_scan("1crn", chain="A", positions=[13])
 
-# Per-residue energy
+# Per-residue energy (OpenMM)
 df = db.per_residue_energy("1crn")
 ```
+
+---
+
+## Calibrating the Empirical Weights
+
+The empirical ΔΔG is a weighted sum of physical terms. The shipped weights are
+fit by non-negative least squares against experimental ΔΔG with leave-one-out
+cross-validation, and load automatically from
+`sicifus/data/empirical_weights.json` (folding stability) and
+`empirical_weights_binding.json` (binding).
+
+These are **preliminary baselines** (stability LOO R ≈ 0.49 on a barnase set;
+binding LOO R ≈ 0.51 on a SKEMPI subset). To recalibrate on your own data, use
+`examples/calibrate_empirical.py`:
+
+```bash
+# Folding stability — CSV with columns: pdb,chain,mutation,ddg
+python examples/calibrate_empirical.py --dataset protherm.csv --write
+
+# Binding — a SKEMPI v2 export (ΔΔG from Kd; uses the Mutation(s)_PDB column)
+python examples/calibrate_empirical.py --dataset skempi_v2.csv --format skempi --write
+```
+
+The script auto-downloads/cleans PDBs, reports in-sample and leave-one-out
+metrics, and (with `--write`) updates the weights JSON. Stability and binding
+are separate regimes and are written to separate files. To use a custom weight
+set without writing it, pass it directly:
+
+```python
+from sicifus import EmpiricalScorer
+scorer = EmpiricalScorer(weights={"solvH": 0.93, "sc_entropy": 0.56, ...})
+```
+
+!!! note "Numbering is validated"
+    Mutations are checked against the structure before building: if the
+    wild-type residue at a position does not match (e.g. a sequence-vs-structure
+    numbering mismatch), you get a clear error naming the expected and actual
+    residue. Use `engine.show_residues(source, chain)` to see what is present.
 
 ---
 

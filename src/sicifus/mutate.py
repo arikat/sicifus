@@ -95,6 +95,9 @@ class _RepairCache:
     system: object
     energy_kj: float
     energy_kcal: float
+    # Per-term WT energy decomposition (kcal/mol), computed once at prepare
+    # time so batch/scan mutations don't re-decompose the identical WT.
+    wt_terms: Optional[Dict[str, float]] = None
 
 
 @dataclass
@@ -180,6 +183,47 @@ def _pdb_string_to_fixer(pdb_string: str):
     from pdbfixer import PDBFixer
     fixer = PDBFixer(pdbfile=io.StringIO(pdb_string))
     return fixer
+
+
+def _validate_wt_residues(topology, mutations) -> None:
+    """Check each mutation's wild-type residue matches the structure.
+
+    Mutations are written against a *sequence* numbering that does not always
+    match a crystal structure's *residue* numbering (different start offset,
+    deposited gaps, alternate schemes).  Applying a mutation to the wrong
+    residue silently corrupts the result, so verify the residue identity up
+    front and raise a clear, actionable error instead of PDBFixer's cryptic one.
+
+    Args:
+        topology: OpenMM topology of the (atom-filled) wild-type structure.
+        mutations: Parsed ``Mutation`` objects to validate.
+
+    Raises:
+        ValueError: if any mutation position is absent or holds a different
+            residue than the mutation's wild-type code.
+    """
+    present = {
+        (chain.id, int(res.id)): res.name
+        for chain in topology.chains()
+        for res in chain.residues()
+    }
+    errors = []
+    for m in mutations:
+        actual = present.get((m.chain, m.position))
+        if actual is None:
+            errors.append(
+                f"{m.label}: residue {m.chain}{m.position} is not in the structure")
+        elif actual != m.wt_residue:
+            errors.append(
+                f"{m.label}: expected {m.wt_residue} "
+                f"({THREE_TO_ONE.get(m.wt_residue, '?')}) at {m.chain}{m.position}, "
+                f"but the structure has {actual} ({THREE_TO_ONE.get(actual, '?')})")
+    if errors:
+        raise ValueError(
+            "Mutation does not match structural numbering:\n  "
+            + "\n  ".join(errors)
+            + "\n  Call engine.show_residues(structure, chain) to see the "
+            "positions and residues actually present.")
 
 
 def _df_to_pdb_string(df: pl.DataFrame) -> str:
@@ -466,6 +510,10 @@ class MutationEngine:
 
         self._ff = None
         self._platform = None
+        # Unfolded-state reference energies (kcal/mol) keyed by residue name.
+        # Only ~20 distinct residue types, so this is built once per type and
+        # reused across every mutation, scan, and batch on this engine.
+        self._unfolded_cache: Dict[str, float] = {}
 
     def _get_forcefield(self):
         if self._ff is None:
@@ -606,6 +654,97 @@ class MutationEngine:
         return terms
 
     # ------------------------------------------------------------------
+    # Unfolded reference state (thermodynamic cycle)
+    # ------------------------------------------------------------------
+
+    def _build_capped_residue_pdb(self, residue_name: str) -> str:
+        """Build a capped single-residue model ACE-X-NME as a PDB string.
+
+        The residue is placed with ideal backbone geometry in an extended
+        conformation and flanked by acetyl (ACE) and N-methylamide (NME)
+        caps, giving a chemically complete, neutral fragment.  PDBFixer then
+        adds the correct side-chain and hydrogen atoms for ``residue_name``,
+        so the fragment's atom inventory matches that residue as it appears
+        in the folded structure.  This is the unfolded reference used by the
+        thermodynamic cycle.
+
+        Only backbone (N, CA, C, O) plus cap heavy atoms are specified; the
+        side chain is rebuilt by PDBFixer.addMissingAtoms().
+        """
+        # Ideal extended-backbone coordinates (Angstrom) for ACE-X-NME.
+        # ACE: CH3-C(=O)- ; residue X: N-CA-C(=O) ; NME: -NH-CH3.
+        # Coordinates are a standard trans, extended (phi=-135, psi=135) build.
+        lines = [
+            # ACE cap
+            ("ACE", 1, "CH3", "C", -1.530, -1.220, 0.000),
+            ("ACE", 1, "C",   "C",  0.000, -1.220, 0.000),
+            ("ACE", 1, "O",   "O",  0.690, -2.235, 0.000),
+            # Residue X backbone
+            (residue_name, 2, "N",  "N",  0.690,  0.000, 0.000),
+            (residue_name, 2, "CA", "C",  2.140,  0.140, 0.000),
+            (residue_name, 2, "C",  "C",  2.720, -0.610, 1.200),
+            (residue_name, 2, "O",  "O",  2.080, -0.730, 2.245),
+            # NME cap
+            ("NME", 3, "N",   "N",  4.000, -1.080, 1.100),
+            ("NME", 3, "CH3", "C",  4.700, -1.800, 2.150),
+        ]
+        pdb = []
+        for i, (resn, resi, aname, elem, x, y, z) in enumerate(lines, start=1):
+            if len(aname) >= 4:
+                aname_fmt = aname[:4]
+            elif len(elem) == 2:
+                aname_fmt = f"{aname:<4}"
+            else:
+                aname_fmt = f" {aname:<3}"
+            pdb.append(
+                f"ATOM  {i:>5} {aname_fmt:<4} {resn:<3} A{resi:>4}    "
+                f"{x:8.3f}{y:8.3f}{z:8.3f}  1.00  0.00           {elem:>2}"
+            )
+        pdb.append("END")
+        return "\n".join(pdb)
+
+    def _compute_unfolded_energy(self, residue_name: str,
+                                 max_iterations: int = 500) -> float:
+        """Minimised energy (kcal/mol) of residue ``residue_name`` in the
+        unfolded reference state (capped, isolated).
+
+        Cached per residue type — the reference for a given amino acid is
+        identical regardless of which structure or position it came from, so
+        each of the ~20 types is built and minimised at most once per engine.
+        """
+        if residue_name in self._unfolded_cache:
+            return self._unfolded_cache[residue_name]
+
+        pdb_text = self._build_capped_residue_pdb(residue_name)
+        fixer = _pdb_string_to_fixer(pdb_text)
+        fixer.missingResidues = {}
+        fixer.findMissingAtoms()
+        fixer.addMissingAtoms()
+        fixer.addMissingHydrogens(7.0)
+
+        system, top, pos = self._build_system(fixer.topology, fixer.positions)
+        _, e_kj = self._minimise(system, top, pos, max_iterations=max_iterations)
+        e_kcal = round(e_kj * self.KJ_TO_KCAL, 4)
+
+        self._unfolded_cache[residue_name] = e_kcal
+        return e_kcal
+
+    def _unfolded_correction(self, mutations: List["Mutation"]) -> float:
+        """Sum of unfolded-state energy changes for a set of mutations.
+
+        Returns Σ_i [E_unfolded(mut_res_i) − E_unfolded(wt_res_i)] (kcal/mol).
+        This is subtracted from the folded-state energy difference to form the
+        thermodynamic-cycle ΔΔG, cancelling each mutated residue's intrinsic
+        self-energy (the source of the atom-count baseline artefact).
+        """
+        correction = 0.0
+        for m in mutations:
+            e_unf_mut = self._compute_unfolded_energy(m.mut_residue)
+            e_unf_wt = self._compute_unfolded_energy(m.wt_residue)
+            correction += (e_unf_mut - e_unf_wt)
+        return correction
+
+    # ------------------------------------------------------------------
     # Prepare (repair-once cache)
     # ------------------------------------------------------------------
 
@@ -636,6 +775,9 @@ class MutationEngine:
 
         pdb_out = _topology_to_pdb(top, pos_min)
 
+        # Decompose the WT once; reused for every mutation built from this cache.
+        wt_terms = self._decompose_energy(system, top, pos_min)
+
         return _RepairCache(
             pdb_string=pdb_out,
             topology=top,
@@ -643,6 +785,7 @@ class MutationEngine:
             system=system,
             energy_kj=e_kj,
             energy_kcal=round(e_kj * self.KJ_TO_KCAL, 4),
+            wt_terms=wt_terms,
         )
 
     def prepare(self, source, max_iterations: int = 2000,
@@ -663,6 +806,55 @@ class MutationEngine:
             ``mutate_batch()`` for deterministic WT energy.
         """
         return self._prepare_structure(source, max_iterations, tolerance)
+
+    def build_pdb_pair(
+        self,
+        source,
+        mutations: List[Union["Mutation", str]],
+        chain: str = "A",
+    ) -> Tuple[str, str]:
+        """Build wild-type and mutant PDB strings *without* minimisation.
+
+        Fills missing atoms and adds hydrogens (PDBFixer) for the WT, and
+        applies the mutations + rebuilds atoms/hydrogens for the mutant.  No
+        energy minimisation is performed — this is the fast structure-prep
+        path used by the empirical scorer.
+
+        Args:
+            source: PDB file path, PDB string, or Polars DataFrame.
+            mutations: Mutations to apply (``Mutation`` objects or strings).
+            chain: Default chain ID for parsing mutation strings.
+
+        Returns:
+            ``(wt_pdb, mutant_pdb)`` as PDB-format strings.
+        """
+        parsed = [
+            m if isinstance(m, Mutation) else Mutation.from_str(m, chain=chain)
+            for m in mutations
+        ]
+
+        pdb_text = _load_pdb(source)
+        fixer_wt = _pdb_string_to_fixer(pdb_text)
+        fixer_wt.missingResidues = {}
+        fixer_wt.findMissingAtoms()
+        fixer_wt.addMissingAtoms()
+        fixer_wt.addMissingHydrogens(7.0)
+        _validate_wt_residues(fixer_wt.topology, parsed)
+        wt_pdb = _topology_to_pdb(fixer_wt.topology, fixer_wt.positions)
+
+        fixer_mut = _pdb_string_to_fixer(wt_pdb)
+        fixer_mut.missingResidues = {}
+        pdbfixer_mutations = [
+            f"{m.wt_residue}-{m.position}-{m.mut_residue}" for m in parsed
+        ]
+        for chain_id in {m.chain for m in parsed}:
+            fixer_mut.applyMutations(pdbfixer_mutations, chain_id)
+        fixer_mut.findMissingAtoms()
+        fixer_mut.addMissingAtoms()
+        fixer_mut.addMissingHydrogens(7.0)
+        mut_pdb = _topology_to_pdb(fixer_mut.topology, fixer_mut.positions)
+
+        return wt_pdb, mut_pdb
 
     # ------------------------------------------------------------------
     # Repair (RepairPDB equivalent)
@@ -823,17 +1015,33 @@ class MutationEngine:
         source,
         mutations: List[Union[Mutation, str]],
         chain: str = "A",
-        n_runs: int = 3,
+        n_runs: int = 1,
         max_iterations: int = 2000,
         constrain_backbone: bool = True,
         keep_statistics: bool = True,
         use_mean: bool = False,
+        decompose: bool = True,
         _repair_cache: Optional[_RepairCache] = None,
     ) -> MutationResult:
         """Apply one or more point mutations, minimise, and compute ddG.
 
         Mutations can be ``Mutation`` objects or short strings like ``'G13L'``.
         Multiple mutations in the same call are applied simultaneously.
+
+        ΔΔG is computed with a **thermodynamic cycle**::
+
+            ddG = (E_folded^mut - E_folded^wt)
+                  - Σ_i [E_unfolded(mut_res_i) - E_unfolded(wt_res_i)]
+
+        The unfolded reference (a capped, isolated residue — see
+        :meth:`_compute_unfolded_energy`) cancels each mutated residue's
+        intrinsic self-energy.  Without it, ``E_mut - E_wt`` would subtract the
+        absolute potential energies of two chemically different molecules with
+        different atom inventories, which is not a meaningful quantity and
+        produced large (tens of kcal/mol) errors.
+
+        Residual minimisation drift remains; keep ``constrain_backbone=True``
+        for best results.  Local-shell minimisation is a planned refinement.
 
         Args:
             source: PDB file path, PDB string, or Polars DataFrame.
@@ -842,7 +1050,11 @@ class MutationEngine:
             chain: Default chain ID applied when parsing mutation strings
                    (default ``'A'``).
             n_runs: Number of independent minimisation runs for the mutant
-                    (default 3).
+                    (default 1).  NOTE: ``LocalEnergyMinimizer`` is deterministic,
+                    so repeated runs from the same start coordinates produce
+                    identical energies.  Values >1 only yield meaningful spread
+                    if the minimisation start is perturbed between runs; with the
+                    current deterministic path they just multiply cost.
             max_iterations: Minimisation steps per run (default 2000).
             constrain_backbone: If True, restrain backbone atoms during mutant
                                 minimisation, allowing only sidechain flexibility.
@@ -850,6 +1062,10 @@ class MutationEngine:
                             (mean, SD, CI) from all runs (default True).
             use_mean: If True, use mean energy for ddG calculation (industry-standard).
                      If False, use best (minimum) energy (default False).
+            decompose: If True (default), compute per-force-term energy
+                      breakdown for WT and mutant.  Set False to skip the
+                      decomposition (saves two Context builds per call) when
+                      only ddG is needed, e.g. alanine/position scans.
             _repair_cache: Pre-processed WT from :meth:`prepare`.  When
                            provided the WT energy comes from the cache,
                            eliminating redundant hydrogen placement and
@@ -951,30 +1167,67 @@ class MutationEngine:
                 best_top_mut = top_m
                 best_sys_mut = sys_m
 
+        # Thermodynamic-cycle correction: subtract each mutated residue's
+        # unfolded-state self-energy so the folded-state difference is not
+        # dominated by the (meaningless) atom-count baseline of comparing two
+        # chemically different molecules.  See _compute_unfolded_energy.
+        #     ddG = (E_folded^mut - E_folded^wt) - Σ[E_unf(mut) - E_unf(wt)]
+        unfolded_correction = self._unfolded_correction(parsed)
+
         # Compute primary ddG (based on use_mean flag)
         if use_mean and keep_statistics:
             primary_energy = float(np.mean(all_run_energies_list))
-            ddg = primary_energy - e_wt
+            ddg = (primary_energy - e_wt) - unfolded_correction
         else:
             primary_energy = best_e_mut
-            ddg = best_e_mut - e_wt
+            ddg = (best_e_mut - e_wt) - unfolded_correction
 
-        # Decompose using the exact system/topology that produced the
-        # minimised positions (no redundant _build_system call).
-        mut_terms = self._decompose_energy(best_sys_mut, best_top_mut, best_pos_mut)
-        wt_terms = self._decompose_energy(sys_wt, top_wt, pos_wt_min)
+        # Per-term energy decomposition (optional — skipped when only ddG is
+        # needed, e.g. scans).  The WT decomposition is identical for every
+        # mutation built from a given repair cache, so reuse it when present.
+        if decompose:
+            mut_terms = self._decompose_energy(best_sys_mut, best_top_mut, best_pos_mut)
+            if _repair_cache is not None and _repair_cache.wt_terms is not None:
+                wt_terms = _repair_cache.wt_terms
+            else:
+                wt_terms = self._decompose_energy(sys_wt, top_wt, pos_wt_min)
 
-        term_rows = []
-        for key in sorted(set(wt_terms.keys()) | set(mut_terms.keys())):
-            wt_val = wt_terms.get(key, 0.0)
-            mt_val = mut_terms.get(key, 0.0)
+            # Per-force-term rows are the *folded-state* decomposition; their
+            # deltas sum to (E_folded^mut − E_folded^wt).  The reported ddG also
+            # subtracts the unfolded reference, so add an explicit
+            # ``unfolded_reference`` row carrying −unfolded_correction and make
+            # the ``total`` row equal ddG, keeping the decomposition consistent
+            # with ``ddg`` (folded terms + unfolded_reference = total = ddG).
+            term_rows = []
+            for key in sorted(set(wt_terms.keys()) | set(mut_terms.keys())):
+                if key == "total":
+                    continue
+                wt_val = wt_terms.get(key, 0.0)
+                mt_val = mut_terms.get(key, 0.0)
+                term_rows.append({
+                    "term": key,
+                    "wt_energy": wt_val,
+                    "mutant_energy": mt_val,
+                    "delta": round(mt_val - wt_val, 4),
+                })
             term_rows.append({
-                "term": key,
-                "wt_energy": wt_val,
-                "mutant_energy": mt_val,
-                "delta": round(mt_val - wt_val, 4),
+                "term": "unfolded_reference",
+                "wt_energy": 0.0,
+                "mutant_energy": round(-unfolded_correction, 4),
+                "delta": round(-unfolded_correction, 4),
             })
-        terms_df = pl.DataFrame(term_rows)
+            term_rows.append({
+                "term": "total",
+                "wt_energy": round(e_wt, 4),
+                "mutant_energy": round(e_wt + ddg, 4),
+                "delta": round(ddg, 4),
+            })
+            terms_df = pl.DataFrame(term_rows)
+        else:
+            terms_df = pl.DataFrame(schema={
+                "term": pl.Utf8, "wt_energy": pl.Float64,
+                "mutant_energy": pl.Float64, "delta": pl.Float64,
+            })
 
         pdb_mut = _topology_to_pdb(best_top_mut, best_pos_mut)
 
@@ -982,6 +1235,14 @@ class MutationEngine:
         stats_dict = None
         if keep_statistics and n_runs > 1:
             stats_dict = _compute_energy_statistics(all_run_energies_list, e_wt, n_runs)
+
+            # Apply the same thermodynamic-cycle correction to the ddG-based
+            # statistics so they stay consistent with the primary ddG.
+            stats_dict["ddg_mean"] = round(stats_dict["ddg_mean"] - unfolded_correction, 4)
+            stats_dict["ci_95"] = (
+                round(stats_dict["ci_95"][0] - unfolded_correction, 4),
+                round(stats_dict["ci_95"][1] - unfolded_correction, 4),
+            )
 
             # Warn if convergence is poor
             if stats_dict["cv"] > 0.1:
@@ -1086,7 +1347,7 @@ class MutationEngine:
         chains_a: List[str],
         chains_b: List[str],
         max_iterations: int = 2000,
-        n_runs: int = 3,
+        n_runs: int = 1,
         constrain_backbone: bool = True,
     ) -> InterfaceMutationResult:
         """Apply mutations to protein-protein interface and compute ΔΔG_binding.
@@ -1180,9 +1441,18 @@ class MutationEngine:
         e_binding_mut = best_e_complex - (e_a_mut + e_b_mut)
 
         # --- Step 5: Compute ΔΔG values ---
+        # ΔΔG_binding is self-referencing (each mutated residue appears in both
+        # the complex and the free chain, so its self-energy cancels) and needs
+        # no correction.  The per-chain stability ΔΔGs are folded-vs-folded
+        # absolute-energy differences, so they get the same thermodynamic-cycle
+        # correction as mutate().
+        corr_a = self._unfolded_correction(
+            [m for c in chains_a for m in mutations_by_chain.get(c, [])])
+        corr_b = self._unfolded_correction(
+            [m for c in chains_b for m in mutations_by_chain.get(c, [])])
         ddg_binding = e_binding_mut - wt_binding.binding_energy
-        ddg_stability_a = e_a_mut - wt_binding.chain_a_energy
-        ddg_stability_b = e_b_mut - wt_binding.chain_b_energy
+        ddg_stability_a = (e_a_mut - wt_binding.chain_a_energy) - corr_a
+        ddg_stability_b = (e_b_mut - wt_binding.chain_b_energy) - corr_b
 
         # --- Step 6: Get mutant PDB ---
         mutant_pdb = _topology_to_pdb(best_top_complex, best_pos_complex)
@@ -1264,6 +1534,7 @@ class MutationEngine:
                     pdb_text, [mut],
                     max_iterations=max_iterations,
                     constrain_backbone=constrain_backbone,
+                    decompose=False,
                 )
                 ddg_val = list(result.ddg.values())[0]
             except Exception as e:
@@ -1343,6 +1614,7 @@ class MutationEngine:
                         pdb_text, [mut],
                         max_iterations=max_iterations,
                         constrain_backbone=constrain_backbone,
+                        decompose=False,
                     )
                     ddg_val = list(result.ddg.values())[0]
                 except Exception as e:
@@ -1416,6 +1688,7 @@ class MutationEngine:
                     pdb_text, [mut],
                     max_iterations=max_iterations,
                     constrain_backbone=True,
+                    decompose=False,
                 )
                 ddg_val = list(result.ddg.values())[0]
                 contribution = -ddg_val
@@ -1483,7 +1756,7 @@ class MutationEngine:
         source,
         mutations_df: pl.DataFrame,
         max_iterations: int = 2000,
-        n_runs: int = 3,
+        n_runs: int = 1,
         constrain_backbone: bool = True,
         keep_statistics: bool = False,
         _repair_cache: Optional[_RepairCache] = None,
@@ -1502,7 +1775,8 @@ class MutationEngine:
             mutations_df: DataFrame with ``mutation`` and ``chain`` columns
                           (as returned by :meth:`load_mutations`).
             max_iterations: Minimisation steps per mutation (default 2000).
-            n_runs: Independent minimisation runs per mutation (default 3).
+            n_runs: Independent minimisation runs per mutation (default 1;
+                    see :meth:`mutate` — runs are deterministic).
             constrain_backbone: Restrain backbone during minimisation.
             keep_statistics: If True, include statistical fields (mean, SD, CI)
                            in the output (default False).
@@ -1539,6 +1813,7 @@ class MutationEngine:
                     max_iterations=max_iterations,
                     constrain_backbone=constrain_backbone,
                     keep_statistics=keep_statistics,
+                    decompose=False,
                     _repair_cache=_repair_cache,
                 )
                 ddg_val = list(result.ddg.values())[0]

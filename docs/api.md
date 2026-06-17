@@ -40,6 +40,7 @@
         - repair_structure
         - calculate_stability
         - mutate_structure
+        - binding_ddg
         - load_mutations
         - mutate_batch
         - calculate_binding_energy
@@ -47,7 +48,23 @@
         - position_scan
         - per_residue_energy
 
+## Empirical Scorer
+
+The default, no-MD ΔΔG backend (see the
+[Mutation & Stability tutorial](tutorials/mutations.md)).
+
+::: sicifus.EmpiricalScorer
+    handler: python
+    options:
+      members:
+        - score
+        - score_mutation
+        - score_binding_mutation
+        - repack
+
 ## Mutation Engine
+
+The OpenMM physics-reference backend (opt in with `method="openmm"`).
 
 ::: sicifus.MutationEngine
     handler: python

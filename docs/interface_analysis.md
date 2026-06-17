@@ -16,6 +16,19 @@ Three high-impact industry-standard features have been successfully implemented 
 
 Automates the workflow of mutating residues at protein-protein interfaces and computing how those mutations affect binding affinity. This combines commercial tool workflows and **AnalyseComplex** into a single pipeline.
 
+!!! tip "Fast empirical alternative"
+    `mutate_interface` below is the **OpenMM** (minimised) reference path. For a
+    fast, no-MD binding ΔΔG of an interface mutation, use the empirical
+    `Sicifus.binding_ddg`:
+
+    ```python
+    # ΔΔG_bind = ΔΔG_fold(complex) − ΔΔG_fold(isolated mutated partner)
+    result = db.binding_ddg("complex_id", ["F13A"], mutated_chains="A")
+    print(result.ddg["F13A"])   # positive = weakens binding
+    ```
+
+    Same cycle, no minimisation; reuses the empirical locality + repacking.
+
 ### Key Method
 
 ```python
